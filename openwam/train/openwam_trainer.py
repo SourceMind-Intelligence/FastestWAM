@@ -50,6 +50,7 @@ from openwam.train.utils.training_utils import (
     log_parameter_counts,
     reduce_step_metrics,
     write_debug_loss_row,
+    write_scaling_metrics_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -321,7 +322,8 @@ class OpenWAMTrainer:
                 with self.accelerator.accumulate(self.architecture):
                     losses = self.compute_loss(batch)
                     loss = losses["total"]
-                    self.accelerator.backward(loss)
+                    if not losses.get("backward_done"):
+                        self.accelerator.backward(loss)
 
                     grad_norm = torch.tensor(0.0, device=loss.device)
                     if self.accelerator.sync_gradients:
@@ -565,13 +567,19 @@ class OpenWAMTrainer:
             **inputs,
             lambda_video=self.lambda_video,
             lambda_action=self.lambda_action,
+            accelerator=self.accelerator if getattr(self.architecture, "_action_objective", "flow") == "mip" else None,
         )
 
-        return {
+        out = {
             "total": result["loss"],
             "video": result.get("loss_video", torch.tensor(0.0)),
             "action": result.get("loss_action", torch.tensor(0.0)),
+            "backward_done": bool(result.get("backward_done", False)),
         }
+        if "loss_mip_t0" in result:
+            out["mip_t0"] = result["loss_mip_t0"]
+            out["mip_t09"] = result["loss_mip_t09"]
+        return out
 
     # (10) Called each step in train()'s loop — progress bar, wandb log, debug loss-history CSV.
     def log_step(
@@ -591,6 +599,12 @@ class OpenWAMTrainer:
     ) -> None:
         """Update progress bar, log to wandb, and (debug) write the loss-history CSV row."""
         labels = [("action", "loss_action")]
+        if "loss_mip_t0" in metrics:
+            labels = [
+                ("action", "loss_action"),
+                ("mip_t0", "loss_mip_t0"),
+                ("mip_t09", "loss_mip_t09"),
+            ]
         loss_total = metrics["loss_total"]
         loss_video = metrics["loss_video"]
         grad_norm = metrics["grad_norm"]
@@ -604,23 +618,46 @@ class OpenWAMTrainer:
             pbar.set_postfix(postfix)
             pbar.update(1)
 
+        num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
+        is_main = self.accelerator is None or self.accelerator.is_main_process
         if wandb_run is not None:
-            num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
             log_dict = {
                 "train/loss": loss_total,
+                "train/total_loss": loss_total,
                 "train/loss_video": loss_video,
+                "train/video_fm_loss": loss_video,
+                "train/action_loss": metrics["loss_action"],
                 "train/grad_norm": grad_norm,
                 "train/lr": lr,
+                "train/epoch": epoch,
+                "train/opt_step": opt_step,
+                "train/global_step": global_step,
+                "train/samples_seen": global_step * batch_size * num_procs,
                 "performance/steps_per_sec": steps_per_sec,
                 "performance/samples_per_sec": steps_per_sec * batch_size * num_procs,
             }
+            if "loss_mip_t0" in metrics:
+                log_dict["train/mip_loss_t0"] = metrics["loss_mip_t0"]
+                log_dict["train/mip_loss_t09"] = metrics["loss_mip_t09"]
             for name, key in labels:
                 log_dict[f"train/loss_{name}"] = metrics[key]
             wandb_run.log(log_dict, step=global_step)
 
+        if is_main and output_path:
+            write_scaling_metrics_row(
+                output_path,
+                metrics=metrics,
+                global_step=global_step,
+                opt_step=opt_step,
+                epoch=epoch,
+                lr=lr,
+                steps_per_sec=steps_per_sec,
+                batch_size=batch_size,
+                num_procs=num_procs,
+            )
+
         if not debug:
             return
-        is_main = self.accelerator is None or self.accelerator.is_main_process
         if not is_main:
             return
         loss_parts = " ".join(f"{name}={metrics[key]:.6f}" for name, key in labels)

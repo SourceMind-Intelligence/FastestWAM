@@ -19,6 +19,11 @@ freeze:
 architecture:
   framework: dual_system
   variant: joint_self_attn   # joint_self_attn | joint_cross_attn | idm
+  # Action training/inference objective. ``flow`` is the original OpenWAM
+  # flow-matching path (bit-identical). ``mip`` replaces only the action
+  # loss and the 2-step action sampler; video flow-matching is unchanged.
+  action_objective: flow     # flow | mip
+  mip_t_star: 0.9            # MIP data-time of the second branch / second infer step
 
   action_dim: 80             # 80 = unified action space (unify_action=true); raw width otherwise (e.g. robotwin eef=20, joint=14)
   use_proprioception: true   # true = dataloader must provide sample["proprio"], appended as one proprio token
