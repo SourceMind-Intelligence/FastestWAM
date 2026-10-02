@@ -100,8 +100,12 @@ class _RecordingEngine:
         return {"actions": torch.zeros(1, 4).numpy()}
 
 
-def _cfg(num, stride):
-    return types.SimpleNamespace(dataloader=types.SimpleNamespace(history_num_frames=num, history_stride=stride))
+def _cfg(num, stride, include_first_frame=False):
+    return types.SimpleNamespace(
+        dataloader=types.SimpleNamespace(
+            history_num_frames=num, history_stride=stride, history_include_first_frame=include_first_frame
+        )
+    )
 
 
 def test_policy_history_matches_training_sampling_and_resets():
@@ -121,6 +125,30 @@ def test_policy_history_matches_training_sampling_and_resets():
 
     policy.reset()
     policy.predict_action({"image": frames[5], "prompt": "p"})
+    assert ids(engine.conditions[-1]) == [5, 5]
+
+
+def test_policy_first_frame_slot_survives_the_bounded_buffer_and_resets():
+    engine = _RecordingEngine()
+    policy = WAMPolicy(
+        engine, _cfg(2, 3, include_first_frame=True), execution_config={"mode": "sync", "inference_horizon": 1}
+    )
+    frames = [Image.new("L", (1, 1), i) for i in range(12)]
+    for img in frames:
+        policy.predict_action({"image": img, "prompt": "p"})
+
+    def ids(cond):
+        return [f.getpixel((0, 0)) for f in cond["history_images"]]
+
+    # The buffer keeps 7 frames, so frame 0 is long gone from it by step 11;
+    # the oldest slot still holds it and the other slot is frame t-3.
+    assert ids(engine.conditions[0]) == [0, 0]
+    assert ids(engine.conditions[4]) == [0, 1]
+    assert ids(engine.conditions[11]) == [0, 8]
+
+    policy.reset()
+    policy.predict_action({"image": frames[5], "prompt": "p"})
+    policy.predict_action({"image": frames[6], "prompt": "p"})
     assert ids(engine.conditions[-1]) == [5, 5]
 
 

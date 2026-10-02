@@ -909,6 +909,31 @@ def test_history_frames_are_sampled_before_the_window_and_clamped_to_episode_sta
         np.testing.assert_array_equal(np.asarray(sample["video"][0]), first_frame_at(start))
 
 
+def test_history_first_frame_slot_pins_the_episode_start(tmp_path: Path):
+    write_episode(tmp_path, T=8)
+    plain = build_single(tmp_path, num_frames=3)
+    history = build_single(
+        tmp_path, num_frames=3, history_num_frames=2, history_stride=2, history_include_first_frame=True
+    )
+
+    def first_frame_at(start: int) -> np.ndarray:
+        index = plain._window_index.index((0, start))
+        return np.asarray(plain[index]["video"][0])
+
+    for start in (0, 1, 3, 5):
+        frames = history[history._window_index.index((0, start))]["history_images"]
+        assert len(frames) == 2
+        # The oldest slot is always frame 0; the other keeps its stride offset.
+        np.testing.assert_array_equal(np.asarray(frames[0]), first_frame_at(0))
+        np.testing.assert_array_equal(np.asarray(frames[1]), first_frame_at(max(start - 2, 0)))
+
+
+def test_history_first_frame_slot_needs_history_frames(tmp_path: Path):
+    write_episode(tmp_path, T=8)
+    with pytest.raises(ValueError, match="history_include_first_frame"):
+        build_single(tmp_path, num_frames=3, history_include_first_frame=True)
+
+
 def test_history_frames_share_the_clip_color_jitter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     write_episode(tmp_path, T=6)
     jitter = {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.0}
