@@ -7,7 +7,7 @@ Call order — core skeleton only:
   train():     build optimizer/dataloader/scheduler -> setup output dir
                -> accelerate prepare -> loop{ compute_loss -> backward/clip/step
                -> reduce metrics -> log step -> maybe save ckpt }
-               -> finish_training (final ckpt, drop resume state, close wandb)
+               -> finish_training (final ckpt, retain requested resume state, close wandb)
 
 Methods below are ordered by call sequence: __init__, train, then the
 helpers in the order train() reaches them (sub-helpers follow their caller).
@@ -50,6 +50,7 @@ from openwam.train.utils.training_utils import (
     log_parameter_counts,
     reduce_step_metrics,
     write_debug_loss_row,
+    write_scaling_metrics_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,15 @@ class OpenWAMTrainer:
         # Loss weights from the training config
         self.lambda_video = float(t.lambda_video)
         self.lambda_action = float(t.lambda_action)
+        self.video_xm_k = int(t.get("video_xm_k", 1))
+        self.video_xm_mix = float(t.get("video_xm_mix", 1.0))
+        if self.video_xm_k not in (1, 2):
+            raise ValueError("video_xm_k currently supports only 1 or 2")
+        if not 0.0 <= self.video_xm_mix <= 1.0:
+            raise ValueError("video_xm_mix must be in [0, 1]")
+        if self.video_xm_k > 1 and str(m.architecture.action_objective) != "flow":
+            raise ValueError("video XM pilot currently supports action_objective=flow only")
+        logger.info("Video objective: Forward XM K=%d mix=%.3f", self.video_xm_k, self.video_xm_mix)
 
         # Push forward-time training flags onto the architecture so prepare_inputs
         # is self-contained.
@@ -230,6 +240,9 @@ class OpenWAMTrainer:
                 save_steps = int(save_steps)
         keep_last_k = int(getattr(t, "keep_last_k_ckpts", 3))
         save_full_states_for_resume = bool(getattr(t, "save_full_states_for_resume", False))
+        initial_save_steps = {int(step) for step in getattr(t, "initial_save_steps", [])}
+        if save_full_states_for_resume and not save_steps:
+            raise ValueError("save_full_states_for_resume=true requires training.save_steps > 0")
 
         # Finetune warm-start weights were already loaded at architecture
         # construction (__init__, self-contained ckpt-dir path). Step stays 0.
@@ -279,7 +292,7 @@ class OpenWAMTrainer:
             )
             if already_done:
                 logger.info("[resume] global_step=%d already complete; finishing.", global_step)
-                self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+                self.finish_training(output_path, global_step, opt_step, start_epoch, save_steps, keep_last_k, is_main, wandb_run)
                 return
             if skip_first > 0 and self._run_seed is None:
                 logger.warning(
@@ -321,7 +334,8 @@ class OpenWAMTrainer:
                 with self.accelerator.accumulate(self.architecture):
                     losses = self.compute_loss(batch)
                     loss = losses["total"]
-                    self.accelerator.backward(loss)
+                    if not losses.get("backward_done"):
+                        self.accelerator.backward(loss)
 
                     grad_norm = torch.tensor(0.0, device=loss.device)
                     if self.accelerator.sync_gradients:
@@ -359,7 +373,7 @@ class OpenWAMTrainer:
 
                 # save_steps: write the weights line (+ the resumable full state when
                 # save_full_states_for_resume=true), then prune in lockstep.
-                if save_steps and global_step > 0 and global_step % save_steps == 0:
+                if save_steps and global_step > 0 and (global_step % save_steps == 0 or global_step in initial_save_steps):
                     save_weights(self.accelerator, self.architecture, output_path, global_step, final=False)
                     if save_full_states_for_resume:
                         save_full_state(self.accelerator, output_path, global_step, opt_step, epoch)
@@ -368,11 +382,11 @@ class OpenWAMTrainer:
 
                 if max_steps and global_step >= max_steps:
                     pbar.close()
-                    self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+                    self.finish_training(output_path, global_step, opt_step, epoch, save_steps, keep_last_k, is_main, wandb_run)
                     return
 
         pbar.close()
-        self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+        self.finish_training(output_path, global_step, opt_step, epoch, save_steps, keep_last_k, is_main, wandb_run)
 
     # (3) Called by train() first — AdamW over the per-module (action/video) LR param groups.
     def build_optimizer(self) -> torch.optim.Optimizer:
@@ -565,13 +579,25 @@ class OpenWAMTrainer:
             **inputs,
             lambda_video=self.lambda_video,
             lambda_action=self.lambda_action,
+            video_xm_k=self.video_xm_k,
+            video_xm_mix=self.video_xm_mix,
+            accelerator=self.accelerator if getattr(self.architecture, "_action_objective", "flow") == "mip" else None,
         )
 
-        return {
+        out = {
             "total": result["loss"],
             "video": result.get("loss_video", torch.tensor(0.0)),
             "action": result.get("loss_action", torch.tensor(0.0)),
+            "backward_done": bool(result.get("backward_done", False)),
         }
+        if "loss_mip_t0" in result:
+            out["mip_t0"] = result["loss_mip_t0"]
+            out["mip_t09"] = result["loss_mip_t09"]
+        if "xm_alt_fraction" in result:
+            out["xm_alt_fraction"] = result["xm_alt_fraction"]
+            out["xm_candidate0_loss"] = result["xm_candidate0_loss"]
+            out["xm_best_loss"] = result["xm_best_loss"]
+        return out
 
     # (10) Called each step in train()'s loop — progress bar, wandb log, debug loss-history CSV.
     def log_step(
@@ -591,6 +617,12 @@ class OpenWAMTrainer:
     ) -> None:
         """Update progress bar, log to wandb, and (debug) write the loss-history CSV row."""
         labels = [("action", "loss_action")]
+        if "loss_mip_t0" in metrics:
+            labels = [
+                ("action", "loss_action"),
+                ("mip_t0", "loss_mip_t0"),
+                ("mip_t09", "loss_mip_t09"),
+            ]
         loss_total = metrics["loss_total"]
         loss_video = metrics["loss_video"]
         grad_norm = metrics["grad_norm"]
@@ -604,23 +636,50 @@ class OpenWAMTrainer:
             pbar.set_postfix(postfix)
             pbar.update(1)
 
+        num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
+        is_main = self.accelerator is None or self.accelerator.is_main_process
         if wandb_run is not None:
-            num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
             log_dict = {
                 "train/loss": loss_total,
+                "train/total_loss": loss_total,
                 "train/loss_video": loss_video,
+                "train/video_fm_loss": loss_video,
+                "train/action_loss": metrics["loss_action"],
                 "train/grad_norm": grad_norm,
                 "train/lr": lr,
+                "train/epoch": epoch,
+                "train/opt_step": opt_step,
+                "train/global_step": global_step,
+                "train/samples_seen": global_step * batch_size * num_procs,
                 "performance/steps_per_sec": steps_per_sec,
                 "performance/samples_per_sec": steps_per_sec * batch_size * num_procs,
             }
+            if "loss_mip_t0" in metrics:
+                log_dict["train/mip_loss_t0"] = metrics["loss_mip_t0"]
+                log_dict["train/mip_loss_t09"] = metrics["loss_mip_t09"]
+            if "xm_alt_fraction" in metrics:
+                log_dict["train/xm_alt_fraction"] = metrics["xm_alt_fraction"]
+                log_dict["train/xm_candidate0_loss"] = metrics["xm_candidate0_loss"]
+                log_dict["train/xm_best_loss"] = metrics["xm_best_loss"]
             for name, key in labels:
                 log_dict[f"train/loss_{name}"] = metrics[key]
             wandb_run.log(log_dict, step=global_step)
 
+        if is_main and output_path:
+            write_scaling_metrics_row(
+                output_path,
+                metrics=metrics,
+                global_step=global_step,
+                opt_step=opt_step,
+                epoch=epoch,
+                lr=lr,
+                steps_per_sec=steps_per_sec,
+                batch_size=batch_size,
+                num_procs=num_procs,
+            )
+
         if not debug:
             return
-        is_main = self.accelerator is None or self.accelerator.is_main_process
         if not is_main:
             return
         loss_parts = " ".join(f"{name}={metrics[key]:.6f}" for name, key in labels)
@@ -648,27 +707,34 @@ class OpenWAMTrainer:
                 steps_per_sec=steps_per_sec,
             )
 
-    # (11) Called on every train() exit — final weights, drop resume state, close wandb.
+    # (11) Called on every train() exit — final weights/state, retention, close wandb.
     def finish_training(
         self,
         output_path: str,
         global_step: int,
+        opt_step: int,
+        epoch: int,
         save_steps,
         keep_last_k: int,
         is_main: bool,
         wandb_run,
     ) -> None:
-        """Unified teardown for every exit path: final weights, drop resume state, close wandb.
+        """Write the final checkpoint and retain full state when resume was requested.
 
-        Falsy ``save_steps`` = a profiling/no-write run, so no final artifact (matches the
-        periodic-save gating). After the final weights land, ``finalize_keep_weights_only``
-        removes every ``accel_state_step_*`` and retains the configured number of recent
-        weight checkpoints (rank-0, post-barrier).
+        A periodic save at the final step already has both artifacts; its completion
+        marker avoids writing them twice. A partial save has no marker and is redone.
         """
-        if save_steps:
+        keep_resume_state = bool(getattr(self.cfg.training, "save_full_states_for_resume", False))
+        state_marker = os.path.join(output_path, f"accel_state_step_{global_step}", "trainer_state.json")
+        if save_steps and not (keep_resume_state and os.path.isfile(state_marker)):
             save_weights(self.accelerator, self.architecture, output_path, global_step, final=True)
+            if keep_resume_state:
+                save_full_state(self.accelerator, output_path, global_step, opt_step, epoch)
         self.accelerator.wait_for_everyone()
         if is_main:
-            finalize_keep_weights_only(output_path, keep_last_k)
+            if keep_resume_state:
+                manage_checkpoints(output_path, keep_last_k)
+            else:
+                finalize_keep_weights_only(output_path, keep_last_k)
         if wandb_run is not None:
             wandb_run.finish()

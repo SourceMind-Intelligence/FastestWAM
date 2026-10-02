@@ -33,6 +33,11 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from openwam.model.action_backbone.mip import (
+    MIP_T_STAR,
+    mip_action_timesteps,
+    mip_branch_input,
+)
 from openwam.model.compile_options import compile_enabled
 
 
@@ -179,6 +184,15 @@ class BaseWAMArchitecture(ABC, nn.Module):
         self._use_gradient_checkpointing_offload = False
         self._max_timestep_boundary = 1.0
         self._min_timestep_boundary = 0.0
+
+        # Action objective: ``flow`` is the original OpenWAM path; ``mip``
+        # replaces only the action loss / 2-step action inference.
+        self._action_objective = str(self._cfg_get(cfg, "action_objective", "flow")).strip().lower()
+        if self._action_objective not in {"flow", "mip"}:
+            raise ValueError(
+                f"action_objective must be 'flow' or 'mip', got {self._action_objective!r}"
+            )
+        self._mip_t_star = float(self._cfg_get(cfg, "mip_t_star", MIP_T_STAR))
 
         # Optional action normalizer for deployment. ``generate`` uses it to
         # return real-scale actions; deploy-side proprio preprocessing uses it
@@ -1041,19 +1055,166 @@ class BaseWAMArchitecture(ABC, nn.Module):
 
     # --- Training: loss computation ---
 
+    def _loss_joint_forward(
+        self,
+        noisy_actions: Optional[Tensor],
+        action_timesteps: Optional[Tensor],
+        video_timesteps: Tensor,
+        inputs: dict,
+    ) -> Tuple[Tensor, Optional[Tensor]]:
+        """One joint video/action forward for loss, sharing the prepared video latents."""
+        forward_inputs = dict(inputs)
+        proprio = forward_inputs.pop("proprio", None)
+        proprio_mask = forward_inputs.pop("proprio_mask", None)
+        use_grad_ckpt = forward_inputs.pop("use_gradient_checkpointing", False)
+        use_grad_ckpt_offload = forward_inputs.pop("use_gradient_checkpointing_offload", False)
+        # Padding masks are kept in `inputs` for loss-side masking but dropped
+        # from `forward_inputs` so they don't leak into vb.prepare(). Per FastWAM
+        # MoT design, attention itself does not consume sample-level padding.
+        forward_inputs.pop("action_is_pad", None)
+        forward_inputs.pop("video_is_pad", None)
+        if proprio_mask is not None:
+            forward_inputs["_proprio_sample_mask"] = proprio_mask
+        return self(
+            noisy_actions,
+            action_timesteps,
+            proprio=proprio,
+            use_gradient_checkpointing=use_grad_ckpt,
+            use_gradient_checkpointing_offload=use_grad_ckpt_offload,
+            **forward_inputs,
+            timestep=video_timesteps,
+        )
+
+    def _masked_action_mse(self, pred: Tensor, target: Tensor, inputs: dict) -> Tensor:
+        """Masked MSE on action tensors without flow-matching timestep weights."""
+        import torch.nn.functional as F
+
+        per_element = F.mse_loss(pred.float(), target.float(), reduction="none")
+        action_is_pad = inputs.get("action_is_pad")
+        if action_is_pad is None:
+            return per_element.mean()
+
+        action_is_pad = action_is_pad.to(device=per_element.device, dtype=torch.bool)
+        valid_mask_f = (~action_is_pad).float()
+        if valid_mask_f.shape == per_element.shape:
+            weighted = per_element * valid_mask_f
+            per_sample = weighted.sum(dim=(1, 2)) / valid_mask_f.sum(dim=(1, 2)).clamp(min=1)
+            return per_sample.mean()
+        if valid_mask_f.ndim == 3:
+            valid_mask_f = (valid_mask_f > 0).any(dim=-1).float()
+        per_step = per_element.mean(dim=2) * valid_mask_f
+        valid_count = valid_mask_f.sum(dim=1).clamp(min=1)
+        return (per_step.sum(dim=1) / valid_count).mean()
+
+    def _compute_mip_action_loss(
+        self,
+        *,
+        actions: Tensor,
+        video_timesteps: Tensor,
+        video_target: Tensor,
+        video_timestep_ids: Tensor,
+        inputs: dict,
+        lambda_video: float,
+        lambda_action: float,
+        device: torch.device,
+        dtype: torch.dtype,
+        accelerator=None,
+    ) -> dict:
+        """Two-branch MIP action loss; video stream stays flow-matching.
+
+        When ``accelerator`` is provided, each branch is backwarded before the
+        next forward so peak activation memory matches a single joint step.
+
+        Accelerate+DeepSpeed's ``accelerator.backward`` also runs ``engine.step()``
+        when ``sync_gradients`` is true. MIP must not step after the first branch,
+        so DeepSpeed uses ``engine.backward`` only and one ``engine.step`` after
+        both branches (matching the flow-matching training loop).
+        """
+        B = actions.shape[0]
+        num_ts = int(getattr(self.action_scheduler, "num_train_timesteps", 1000))
+        t_star = self._mip_t_star
+        t0 = mip_action_timesteps(0.0, B, device=device, dtype=dtype, num_train_timesteps=num_ts)
+        t09 = mip_action_timesteps(t_star, B, device=device, dtype=dtype, num_train_timesteps=num_ts)
+        latents = inputs["latents"]
+        ds_engine = getattr(getattr(accelerator, "deepspeed_engine_wrapped", None), "engine", None)
+
+        def _one_branch(t_mip, action_timesteps, noise=None):
+            branch_inputs = dict(inputs)
+            branch_inputs["latents"] = latents.clone()
+            action_in = mip_branch_input(actions, t_mip, noise)
+            video_pred, action_pred = self._loss_joint_forward(
+                action_in, action_timesteps, video_timesteps, branch_inputs
+            )
+            loss_video = self._compute_video_loss(
+                video_pred, video_target, video_timestep_ids, branch_inputs, device
+            )
+            loss_action = self._masked_action_mse(action_pred, actions, branch_inputs)
+            if lambda_video == 0:
+                weighted = lambda_action * loss_action
+            else:
+                weighted = lambda_video * loss_video + lambda_action * loss_action
+            return weighted, loss_video, loss_action
+
+        def _backward_branch(loss, *, is_final: bool) -> None:
+            if ds_engine is not None:
+                ds_engine.set_gradient_accumulation_boundary(is_boundary=is_final)
+                ds_engine.backward(loss)
+                return
+            accelerator.backward(loss)
+
+        weighted0, loss_video_0, loss_t0 = _one_branch(0.0, t0)
+        branch0 = 0.5 * weighted0
+        lv0 = loss_video_0.detach()
+        la0 = loss_t0.detach()
+        if accelerator is not None:
+            _backward_branch(branch0, is_final=False)
+            del weighted0, branch0, loss_video_0, loss_t0
+
+        z = torch.randn_like(actions)
+        weighted09, loss_video_09, loss_t09 = _one_branch(t_star, t09, z)
+        branch09 = 0.5 * weighted09
+        lv09 = loss_video_09.detach()
+        la09 = loss_t09.detach()
+        if accelerator is not None:
+            _backward_branch(branch09, is_final=True)
+            del weighted09, branch09, loss_video_09, loss_t09
+            if ds_engine is not None:
+                ds_engine.step()
+            loss = (0.5 * (lambda_video * lv0 + lambda_action * la0)) + (
+                0.5 * (lambda_video * lv09 + lambda_action * la09)
+            )
+            backward_done = True
+        else:
+            loss = branch0 + branch09
+            backward_done = False
+
+        loss_video = 0.5 * (lv0 + lv09)
+        loss_action = 0.5 * (la0 + la09)
+        return {
+            "loss": loss,
+            "loss_video": lambda_video * loss_video,
+            "loss_action": lambda_action * loss_action,
+            "loss_mip_t0": la0,
+            "loss_mip_t09": la09,
+            "backward_done": backward_done,
+        }
+
     def compute_loss(
         self,
         *,
         actions: Optional[torch.Tensor] = None,
         lambda_video: float = 1.0,
         lambda_action: float = 1.0,
+        video_xm_k: int = 1,
+        video_xm_mix: float = 1.0,
+        accelerator=None,
         **inputs,
     ) -> dict:
-        """Compute joint video-action flow matching loss.
+        """Compute joint video-action loss.
 
-        This is the single entry point for training loss computation.
-        Handles timestep sampling, noise injection, forward pass, and
-        loss calculation internally.
+        Video is always flow-matching. Action is flow-matching when
+        ``action_objective=flow`` (the original OpenWAM path) and MIP when
+        ``action_objective=mip``.
 
         Callers should produce ``inputs`` via ``self.prepare_inputs(batch)``
         (preferred) or assemble it manually with the same keys: the output of
@@ -1069,7 +1230,8 @@ class BaseWAMArchitecture(ABC, nn.Module):
             **inputs: Preprocessed video/text tensors plus forward-time flags.
 
         Returns:
-            dict with keys: loss, loss_video, loss_action.
+            dict with keys: loss, loss_video, loss_action. MIP also returns
+            ``loss_mip_t0`` and ``loss_mip_t09``.
         """
         vb = self.video_backbone
         action_scheduler = self.action_backbone.scheduler
@@ -1100,7 +1262,28 @@ class BaseWAMArchitecture(ABC, nn.Module):
         if inputs.get("first_frame_latents") is not None:
             inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
 
-        # --- Prepare action noise ---
+        if lambda_action > 0 and actions is not None:
+            actions = actions.to(dtype=_dtype, device=_device)
+            if actions.dim() == 2:
+                actions = actions.unsqueeze(0)
+
+        if self._action_objective == "mip" and lambda_action > 0 and actions is not None:
+            if video_xm_k != 1:
+                raise ValueError("video XM is only implemented for action_objective=flow")
+            return self._compute_mip_action_loss(
+                actions=actions,
+                video_timesteps=video_timesteps,
+                video_target=video_target,
+                video_timestep_ids=video_timestep_ids,
+                inputs=inputs,
+                lambda_video=lambda_video,
+                lambda_action=lambda_action,
+                device=_device,
+                dtype=_dtype,
+                accelerator=accelerator,
+            )
+
+        # --- Prepare action noise (flow-matching; unchanged) ---
         noisy_actions, action_target, action_timesteps, action_timestep_ids, action_sigmas, a_sigma_bc = (
             None,
             None,
@@ -1115,10 +1298,6 @@ class BaseWAMArchitecture(ABC, nn.Module):
             action_timesteps = action_scheduler.timesteps[action_timestep_ids].to(dtype=_dtype, device=_device)
             action_sigmas = action_scheduler.sigmas[action_timestep_ids].to(dtype=_dtype, device=_device)
 
-            actions = actions.to(dtype=_dtype, device=_device)
-            if actions.dim() == 2:
-                actions = actions.unsqueeze(0)
-
             action_noise = torch.randn_like(actions)
             if action_sigmas.dim() == 1:
                 a_sigma_bc = action_sigmas.view(B, 1, 1)
@@ -1127,33 +1306,61 @@ class BaseWAMArchitecture(ABC, nn.Module):
             noisy_actions = action_scheduler.add_noise(actions, action_noise, a_sigma_bc)
             action_target = action_scheduler.training_target(actions, action_noise)
 
-        # --- Joint forward pass ---
-        forward_inputs = dict(inputs)
-        proprio = forward_inputs.pop("proprio", None)
-        proprio_mask = forward_inputs.pop("proprio_mask", None)
-        use_grad_ckpt = forward_inputs.pop("use_gradient_checkpointing", False)
-        use_grad_ckpt_offload = forward_inputs.pop("use_gradient_checkpointing_offload", False)
-        # Padding masks are kept in `inputs` for loss-side masking but dropped
-        # from `forward_inputs` so they don't leak into vb.prepare(). Per FastWAM
-        # MoT design, attention itself does not consume sample-level padding.
-        forward_inputs.pop("action_is_pad", None)
-        forward_inputs.pop("video_is_pad", None)
+        # Forward XM for the video FM target. Each sample keeps its own video
+        # timestep and condition, explores two independent noise assignments,
+        # and updates on the lower-loss assignment. No-grad probes keep peak
+        # activation memory close to ordinary training; the chosen assignment
+        # is replayed once with gradients. The action loss formula is unchanged,
+        # although its joint forward sees the selected video-noise assignment.
+        xm_metrics = {}
+        if video_xm_k != 1:
+            if video_xm_k != 2 or lambda_video <= 0:
+                raise ValueError("video XM requires K=2 and lambda_video > 0")
+            if not 0.0 <= video_xm_mix <= 1.0:
+                raise ValueError("video_xm_mix must be in [0, 1]")
+            clean_latents = inputs["input_latents"]
+            noises = (video_noise, torch.randn_like(clean_latents))
+            probe_scores = []
+            with torch.no_grad():
+                for candidate_noise in noises:
+                    candidate_inputs = dict(inputs)
+                    candidate_inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * candidate_noise
+                    if inputs.get("first_frame_latents") is not None:
+                        candidate_inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+                    candidate_pred, _ = self._loss_joint_forward(
+                        noisy_actions if lambda_action > 0 else None,
+                        action_timesteps if lambda_action > 0 else None,
+                        video_timesteps,
+                        candidate_inputs,
+                    )
+                    probe_scores.append(self._compute_video_loss(
+                        candidate_pred,
+                        candidate_noise - clean_latents,
+                        video_timestep_ids,
+                        candidate_inputs,
+                        _device,
+                        reduction="none",
+                    ))
+                    del candidate_pred, candidate_inputs
+            best_is_alt = probe_scores[1] < probe_scores[0]
+            if video_xm_mix < 1.0:
+                best_is_alt = best_is_alt & (torch.rand(B, device=_device) < video_xm_mix)
+            selected_noise = torch.where(best_is_alt.view(B, 1, 1, 1, 1), noises[1], noises[0])
+            inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * selected_noise
+            if inputs.get("first_frame_latents") is not None:
+                inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+            video_target = selected_noise - clean_latents
+            xm_metrics = {
+                "xm_alt_fraction": best_is_alt.float().mean().detach(),
+                "xm_candidate0_loss": probe_scores[0].mean().detach(),
+                "xm_best_loss": torch.minimum(*probe_scores).mean().detach(),
+            }
 
-        # Route per-sample proprio_mask through pipeline_inputs to
-        # ``_append_proprio_context_token``. Internal-only key; pop'd there.
-        if proprio_mask is not None:
-            forward_inputs["_proprio_sample_mask"] = proprio_mask
-
-        # Use ``self(...)`` (not ``self.forward(...)``) so ``nn.Module.__call__``
-        # is invoked and any architecture-level forward-pre-hooks fire.
-        video_noise_pred, action_noise_pred = self(
+        video_noise_pred, action_noise_pred = self._loss_joint_forward(
             noisy_actions if lambda_action > 0 else None,
             action_timesteps if lambda_action > 0 else None,
-            proprio=proprio,
-            use_gradient_checkpointing=use_grad_ckpt,
-            use_gradient_checkpointing_offload=use_grad_ckpt_offload,
-            **forward_inputs,
-            timestep=video_timesteps,
+            video_timesteps,
+            inputs,
         )
 
         # --- Video loss ---
@@ -1170,6 +1377,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 "loss": lambda_video * loss_video,
                 "loss_video": lambda_video * loss_video.detach(),
                 "loss_action": torch.tensor(0.0, device=loss_video.device),
+                **xm_metrics,
             }
 
         # --- Action loss ---
@@ -1187,15 +1395,14 @@ class BaseWAMArchitecture(ABC, nn.Module):
         else:
             loss = lambda_video * loss_video + lambda_action * loss_action
 
-        result = {
+        return {
             "loss": loss,
             "loss_video": lambda_video * loss_video.detach(),
             "loss_action": lambda_action * loss_action.detach(),
+            **xm_metrics,
         }
 
-        return result
-
-    def _compute_video_loss(self, noise_pred, target, timestep_ids, inputs, device):
+    def _compute_video_loss(self, noise_pred, target, timestep_ids, inputs, device, reduction="mean"):
         """Per-sample weighted video MSE loss."""
         import torch.nn.functional as F
 
@@ -1249,7 +1456,12 @@ class BaseWAMArchitecture(ABC, nn.Module):
         else:
             per_sample = per_frame.mean(dim=1)
 
-        return (per_sample * tw).mean()
+        weighted = per_sample * tw
+        if reduction == "none":
+            return weighted
+        if reduction != "mean":
+            raise ValueError(f"unsupported video loss reduction: {reduction}")
+        return weighted.mean()
 
     def _compute_action_loss(self, noise_pred, target, timestep_ids, scheduler, inputs, device):
         """Per-sample weighted action MSE loss.
@@ -1356,6 +1568,98 @@ class BaseWAMArchitecture(ABC, nn.Module):
         if not bool(inactive_action_dims.any()):
             return None
         return inactive_action_dims
+
+    def _generate_mip_actions(
+        self,
+        inputs_shared: dict,
+        schedule,
+        *,
+        action_num_frames: int,
+        decode_video: bool,
+        tiled: bool,
+        active_action_mask: Optional[Tensor],
+        cfg_scale_f: float,
+        cfg_merge: bool,
+        profile: bool,
+        t0: float,
+    ) -> dict:
+        """Deterministic 2-step MIP action inference. No Gaussian, no Euler."""
+        import time
+
+        vb = self.video_backbone
+        device = self.device
+        dtype = self.dtype
+        num_ts = int(getattr(self.action_scheduler, "num_train_timesteps", 1000))
+        t_star = self._mip_t_star
+        a_t0 = mip_action_timesteps(0.0, 1, device=device, dtype=dtype, num_train_timesteps=num_ts)
+        a_t1 = mip_action_timesteps(t_star, 1, device=device, dtype=dtype, num_train_timesteps=num_ts)
+        if schedule is not None and len(schedule) > 0:
+            v_value = float(schedule[0][0])
+        else:
+            v_value = float(getattr(self.video_scheduler, "num_train_timesteps", 1000))
+        v_timestep = torch.tensor([v_value], dtype=dtype, device=device)
+
+        action_latents = torch.zeros(
+            1,
+            action_num_frames - 1,
+            self.action_dim,
+            device=device,
+            dtype=dtype,
+        )
+        inactive_action_dims = self._resolve_inactive_action_dims(active_action_mask, device)
+
+        def _one_forward(action_in, a_timestep):
+            torch.compiler.cudagraph_mark_step_begin()
+            if cfg_scale_f > 1.0:
+                return self._forward_with_cfg(
+                    action_latents=action_in,
+                    a_timestep=a_timestep,
+                    inputs_shared=inputs_shared,
+                    v_timestep=v_timestep,
+                    cfg_scale=cfg_scale_f,
+                    cfg_merge=cfg_merge,
+                )
+            return self.forward(
+                action_in,
+                a_timestep,
+                **inputs_shared,
+                timestep=v_timestep,
+            )
+
+        t_loop = time.time()
+        _, pred0 = _one_forward(action_latents, a_t0)
+        if pred0 is None:
+            raise RuntimeError("MIP inference requires an action prediction from the first step.")
+        if inactive_action_dims is not None:
+            pred0 = pred0.clone()
+            pred0[..., inactive_action_dims] = 0
+
+        action_latents = mip_branch_input(pred0, t_star, noise=None)
+        _, pred1 = _one_forward(action_latents, a_t1)
+        if pred1 is None:
+            raise RuntimeError("MIP inference requires an action prediction from the second step.")
+        if inactive_action_dims is not None:
+            pred1 = pred1.clone()
+            pred1[..., inactive_action_dims] = 0
+
+        if profile:
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            logger.info("[WAM_PROFILE] mip_infer: %.3fs", time.time() - t_loop)
+
+        if decode_video:
+            _assert_decode_video_supported(vb)
+            video_frames = vb.decode_video(inputs_shared["latents"], tiled=tiled)
+        else:
+            video_frames = None
+
+        actions = pred1.squeeze(0).float().cpu().numpy()
+        normalizer = getattr(self, "normalizer", None)
+        if normalizer is not None:
+            actions = normalizer.unnormalize(actions)
+        if profile:
+            logger.info("[WAM_PROFILE] generate_total: %.3fs", time.time() - t0)
+        return {"video": video_frames, "actions": actions}
 
     @torch.no_grad()
     def generate(
@@ -1484,6 +1788,20 @@ class BaseWAMArchitecture(ABC, nn.Module):
             if proprio is None:
                 raise ValueError("use_proprioception=True requires `proprio` during generation.")
             inputs_shared["proprio"] = proprio.to(device=device, dtype=dtype)
+
+        if self._action_objective == "mip":
+            return self._generate_mip_actions(
+                inputs_shared,
+                schedule,
+                action_num_frames=action_num_frames,
+                decode_video=decode_video,
+                tiled=tiled,
+                active_action_mask=active_action_mask,
+                cfg_scale_f=cfg_scale_f,
+                cfg_merge=bool(cfg_merge),
+                profile=profile,
+                t0=t0,
+            )
 
         action_latents = torch.randn(
             1,

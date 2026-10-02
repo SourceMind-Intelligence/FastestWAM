@@ -4,8 +4,10 @@ Pure compute / IO with no training state: config access, parameter reporting,
 LR scheduling, wandb, cross-rank reduction, debug-CSV writing.
 """
 
+import json
 import logging
 import os
+import time
 
 import torch
 
@@ -121,30 +123,92 @@ def reduce_step_metrics(accelerator, losses: dict, grad_norm) -> dict:
     def _f(v):
         return v.item() if isinstance(v, torch.Tensor) else float(v)
 
+    extra_pairs = []
+    if "mip_t0" in losses:
+        extra_pairs.append(("loss_mip_t0", _f(losses["mip_t0"])))
+        extra_pairs.append(("loss_mip_t09", _f(losses["mip_t09"])))
+    if "xm_alt_fraction" in losses:
+        extra_pairs.append(("xm_alt_fraction", _f(losses["xm_alt_fraction"])))
+        extra_pairs.append(("xm_candidate0_loss", _f(losses["xm_candidate0_loss"])))
+        extra_pairs.append(("xm_best_loss", _f(losses["xm_best_loss"])))
+
+    values = [
+        loss.detach().float().item(),
+        _f(losses["video"]),
+        _f(losses["action"]),
+        grad_norm.item(),
+        *[v for _, v in extra_pairs],
+    ]
     if accelerator is not None and accelerator.num_processes > 1:
-        local = torch.tensor(
-            [
-                loss.detach().float().item(),
-                _f(losses["video"]),
-                _f(losses["action"]),
-                grad_norm.item(),
-            ],
-            device=loss.device,
-            dtype=torch.float32,
-        ).reshape(1, -1)
+        local = torch.tensor(values, device=loss.device, dtype=torch.float32).reshape(1, -1)
         g = accelerator.gather(local).mean(dim=0)
-        return {
+        reduced = {
             "loss_total": g[0].item(),
             "loss_video": g[1].item(),
             "loss_action": g[2].item(),
             "grad_norm": g[3].item(),
         }
-    return {
+        for i, (key, _) in enumerate(extra_pairs):
+            reduced[key] = g[4 + i].item()
+        return reduced
+    reduced = {
         "loss_total": loss.detach().item(),
         "loss_video": _f(losses["video"]),
         "loss_action": _f(losses["action"]),
         "grad_norm": grad_norm.item(),
     }
+    for key, value in extra_pairs:
+        reduced[key] = value
+    return reduced
+
+
+def write_scaling_metrics_row(
+    output_path,
+    *,
+    metrics,
+    global_step,
+    opt_step,
+    epoch,
+    lr,
+    steps_per_sec,
+    batch_size,
+    num_procs,
+) -> None:
+    """Append one JSONL row for later loss-vs-compute / scaling plots.
+
+    Does not change the training objective; rank-0 IO only, best-effort.
+    """
+    if not output_path:
+        return
+    samples_seen = int(global_step) * int(batch_size) * int(num_procs)
+    row = {
+        "ts": time.time(),
+        "step": int(global_step),
+        "opt_step": int(opt_step),
+        "epoch": int(epoch) if epoch is not None else None,
+        "loss": float(metrics["loss_total"]),
+        "loss_video": float(metrics["loss_video"]),
+        "loss_action": float(metrics.get("loss_action", 0.0)),
+        "loss_mip_t0": float(metrics["loss_mip_t0"]) if "loss_mip_t0" in metrics else None,
+        "loss_mip_t09": float(metrics["loss_mip_t09"]) if "loss_mip_t09" in metrics else None,
+        "xm_alt_fraction": float(metrics["xm_alt_fraction"]) if "xm_alt_fraction" in metrics else None,
+        "xm_candidate0_loss": float(metrics["xm_candidate0_loss"]) if "xm_candidate0_loss" in metrics else None,
+        "xm_best_loss": float(metrics["xm_best_loss"]) if "xm_best_loss" in metrics else None,
+        "grad_norm": float(metrics["grad_norm"]),
+        "lr": float(lr),
+        "steps_per_sec": float(steps_per_sec),
+        "samples_per_sec": float(steps_per_sec) * int(batch_size) * int(num_procs),
+        "batch_size_per_gpu": int(batch_size),
+        "num_procs": int(num_procs),
+        "samples_seen": samples_seen,
+        "global_batch": int(batch_size) * int(num_procs),
+    }
+    path = os.path.join(output_path, "scaling_metrics.jsonl")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError as exc:
+        logger.warning("failed to write scaling_metrics.jsonl: %s", exc)
 
 
 def write_debug_loss_row(

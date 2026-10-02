@@ -42,6 +42,8 @@ training:
   # --- Loss weights ---
   lambda_video: 1.0               # Video flow-matching loss weight
   lambda_action: 1.0              # Action flow-matching loss weight
+  video_xm_k: 1                  # 1 = ordinary video FM; 2 = Forward XM over two video noises
+  video_xm_mix: 1.0              # Probability of using the best candidate (1.0 = pure XM)
 
   # --- Flow matching timestep range ---
   max_timestep_boundary: 1.0      # Upper bound (fraction of total timesteps)
@@ -50,6 +52,7 @@ training:
   # --- Checkpoint ---
   output_path: outputs/openwam_checkpoints            # Base directory for checkpoint output (relative to the launch cwd)
   save_steps: 2000                # Save checkpoint every N steps (0 or null = disable saving)
+  initial_save_steps: []          # Optional one-time early saves before the regular interval
   save_full_states_for_resume: false  # Also save resumable full state (optimizer/scheduler/RNG) at each save;
                                       # required for training.resume_ckpt_path, costs extra disk per checkpoint
   keep_last_k_ckpts: 1           # Rolling window: keep only the last K checkpoints
