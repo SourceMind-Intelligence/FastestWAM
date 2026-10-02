@@ -1,0 +1,5 @@
+libero_10,6
+libero_10,4
+libero_goal,2
+libero_spatial,5
+libero_object,7
