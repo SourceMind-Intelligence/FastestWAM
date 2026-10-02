@@ -55,7 +55,9 @@ class WAMPolicy:
         # deploy samples past frames exactly as training did; 0 frames = off.
         self._history_num_frames = int(_cfg_select(cfg, "dataloader.history_num_frames", 0) or 0)
         self._history_stride = int(_cfg_select(cfg, "dataloader.history_stride", 25) or 25)
+        self._history_include_first_frame = bool(_cfg_select(cfg, "dataloader.history_include_first_frame", False))
         self._frames = deque(maxlen=self._history_num_frames * self._history_stride + 1)
+        self._first_frame = None
 
         self._execution_config = normalize_execution_config(execution_config)
         self._async = self._execution_config.enabled
@@ -98,6 +100,7 @@ class WAMPolicy:
         """Clear executor state and frame history between episodes."""
         self._executor.reset()
         self._frames.clear()
+        self._first_frame = None
 
     def shutdown(self):
         """Release executor resources (background threads in async mode)."""
@@ -131,7 +134,16 @@ class WAMPolicy:
         One call per environment step. Frame ``k`` is the one seen
         ``k * history_stride`` steps ago; before that many steps have passed it
         is the episode's first frame, matching the training reader's clamp.
+        With ``history_include_first_frame`` the oldest slot always holds the
+        episode's first frame, which the bounded buffer may already have dropped.
         """
+        if self._first_frame is None:
+            self._first_frame = img
         self._frames.append(img)
         newest = len(self._frames) - 1
-        return [self._frames[max(newest - k * self._history_stride, 0)] for k in range(self._history_num_frames, 0, -1)]
+        frames = [
+            self._frames[max(newest - k * self._history_stride, 0)] for k in range(self._history_num_frames, 0, -1)
+        ]
+        if self._history_include_first_frame:
+            frames[0] = self._first_frame
+        return frames

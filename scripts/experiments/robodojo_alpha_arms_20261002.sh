@@ -2,7 +2,7 @@
 # RoboDojo arms continued from OpenWAM-alpha (shallow-head plan, 2026-10-02):
 #   r1  pipeline check, flow matching, 2k steps
 #   r3  control, flow matching, 12k steps (keeps the 10k and 12k checkpoints)
-#   r4  history: 4 past frames 50 source frames apart (2 s at 25 Hz), 10k steps
+#   r4  history: 4 past frames, the episode's first frame plus frames 6, 4 and 2 s back (stride 50 at 25 Hz), 10k steps
 #   r5  video Forward XM, K=2, mix 0.25, 10k steps
 # 8 GPUs x batch 16 = global batch 128. Every arm uses the same LR schedule
 # (500-step warmup, then constant LR) so the arms compare at equal steps.
@@ -25,7 +25,7 @@ save_steps=2000
 case "$arm" in
   r1) steps=2000; save_steps=1000; arm_args=() ;;
   r3) steps=12000; arm_args=() ;;
-  r4) steps=10000; arm_args=(dataloader.history_num_frames=4 dataloader.history_stride=50) ;;
+  r4) steps=10000; arm_args=(dataloader.history_num_frames=4 dataloader.history_stride=50 dataloader.history_include_first_frame=true) ;;
   r5) steps=10000; arm_args=(training.video_xm_k=2 training.video_xm_mix=0.25) ;;
   *) echo "unknown arm: $arm" >&2; exit 2 ;;
 esac

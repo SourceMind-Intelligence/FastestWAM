@@ -43,6 +43,8 @@ target_camera: cam_head
 # checkpoint config, so the policy samples past frames the same way.
 history_num_frames: 0
 history_stride: 25
+# Pin the oldest history slot to the episode's first frame (needs history_num_frames >= 1).
+history_include_first_frame: false
 
 # ── Normalization ────────────────────────────────────────────────────────────
 # Pooled stats are discovered/auto-built under <dataset_dir>/meta/ for this

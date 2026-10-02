@@ -691,6 +691,7 @@ class RoboDojoDataset(BaseDataset):
         color_jitter: Any = None,
         history_num_frames: int = 0,
         history_stride: int = 25,
+        history_include_first_frame: bool = False,
     ):
         super().__init__()
         if action_mode != DEPLOY_ACTION_MODE:
@@ -712,6 +713,8 @@ class RoboDojoDataset(BaseDataset):
             raise ValueError(
                 f"history_num_frames must be >= 0 and history_stride >= 1, got {history_num_frames}, {history_stride}"
             )
+        if history_include_first_frame and int(history_num_frames) < 1:
+            raise ValueError("history_include_first_frame needs history_num_frames >= 1")
 
         self.action_mode = DEPLOY_ACTION_MODE
         self.embodiment = embodiment
@@ -731,6 +734,10 @@ class RoboDojoDataset(BaseDataset):
         # source frames (0 = off). Indices before the episode start clamp to frame 0.
         self.history_num_frames = int(history_num_frames)
         self.history_stride = int(history_stride)
+        # Optionally pin the oldest slot to the episode's first frame, so cues
+        # shown at the start (colours before covering, initial poses) stay in
+        # view for the whole episode while the other slots follow recent motion.
+        self.history_include_first_frame = bool(history_include_first_frame)
 
         # Apply one sampled set of color factors to the assembled clip.  The
         # transform is intentionally train-only so validation/deployment input
@@ -977,10 +984,10 @@ class RoboDojoDataset(BaseDataset):
             for relative_index in self._video_sample_indices:
                 source_index = start + relative_index if relative_index < actual_length else episode_length - 1
                 sampled_video.append(self._video_at(handle, source_index))
-            history_video = [
-                self._video_at(handle, max(start - k * self.history_stride, 0))
-                for k in range(self.history_num_frames, 0, -1)
-            ]
+            history_indices = [max(start - k * self.history_stride, 0) for k in range(self.history_num_frames, 0, -1)]
+            if self.history_include_first_frame:
+                history_indices[0] = 0
+            history_video = [self._video_at(handle, index) for index in history_indices]
 
         if actual_length < self.num_frames:
             states = np.concatenate(
@@ -1104,6 +1111,7 @@ class MultiTaskRoboDojoDataset(BaseDataset):
             color_jitter=_config_get(config, "color_jitter", None),
             history_num_frames=int(_config_get(config, "history_num_frames", 0)),
             history_stride=int(_config_get(config, "history_stride", 25)),
+            history_include_first_frame=bool(_config_get(config, "history_include_first_frame", False)),
         )
 
     def __init__(
