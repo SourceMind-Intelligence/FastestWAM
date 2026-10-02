@@ -6,7 +6,6 @@ import math
 import statistics
 from pathlib import Path
 
-
 SUITES = ("libero_spatial", "libero_object", "libero_goal", "libero_10")
 TRIALS = tuple(range(50))
 

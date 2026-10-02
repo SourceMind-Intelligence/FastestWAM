@@ -14,10 +14,10 @@ from openwam.model.action_backbone.mip import (
 )
 from tests.test_openwam_trainer import (
     _TINY_ARCH_CFG,
-    _MockScheduler,
-    _MockVideoBackbone,
     _make_fake_loss_inputs,
     _make_tiny_arch,
+    _MockScheduler,
+    _MockVideoBackbone,
 )
 
 

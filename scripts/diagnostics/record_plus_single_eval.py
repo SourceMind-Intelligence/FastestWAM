@@ -11,7 +11,6 @@ from pathlib import Path
 import imageio.v2 as imageio
 import numpy as np
 
-
 client = Path(os.environ["WAM_PLUS_SINGLE_EVAL"]).resolve()
 sys.path.insert(0, str(client.parent))
 spec = importlib.util.spec_from_file_location("wam_plus_single_eval", client)

@@ -13,7 +13,6 @@ from hydra import compose, initialize_config_dir
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-
 ROOT = Path("/root/evan/Fastest-WAM-evan/third_party/FastWAM-official")
 CHECKPOINT = Path("/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt")
 OUT = Path("/root/evan/Fastest-WAM-evan/outputs/fastwam_readout/readout_latency_20260927.json")

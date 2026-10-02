@@ -324,7 +324,9 @@ def test_setup_output_dir_verifies_stats_before_reusing_resume_run(tmp_path, mon
 def test_finish_training_keeps_complete_resume_state(tmp_path, monkeypatch):
     """A requested full state must survive normal completion with matching weights."""
     from types import SimpleNamespace
+
     from omegaconf import OmegaConf
+
     import openwam.train.openwam_trainer as trainer_module
 
     (tmp_path / "checkpoint_step_1.safetensors").write_text("old")

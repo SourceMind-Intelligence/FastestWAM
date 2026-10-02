@@ -1,10 +1,10 @@
 """Resumable ranged download of the pinned public Fast-WAM LIBERO checkpoint."""
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 import hashlib
 import os
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 URL = "https://huggingface.co/yuanty/fastwam/resolve/8eaceeb24c3cc92ff2a9c9a9d266a4941b836705/libero_uncond_2cam224.pt"
 SIZE = 12041735140
