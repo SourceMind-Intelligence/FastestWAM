@@ -7,7 +7,7 @@ Call order — core skeleton only:
   train():     build optimizer/dataloader/scheduler -> setup output dir
                -> accelerate prepare -> loop{ compute_loss -> backward/clip/step
                -> reduce metrics -> log step -> maybe save ckpt }
-               -> finish_training (final ckpt, drop resume state, close wandb)
+               -> finish_training (final ckpt, retain requested resume state, close wandb)
 
 Methods below are ordered by call sequence: __init__, train, then the
 helpers in the order train() reaches them (sub-helpers follow their caller).
@@ -231,6 +231,9 @@ class OpenWAMTrainer:
                 save_steps = int(save_steps)
         keep_last_k = int(getattr(t, "keep_last_k_ckpts", 3))
         save_full_states_for_resume = bool(getattr(t, "save_full_states_for_resume", False))
+        initial_save_steps = {int(step) for step in getattr(t, "initial_save_steps", [])}
+        if save_full_states_for_resume and not save_steps:
+            raise ValueError("save_full_states_for_resume=true requires training.save_steps > 0")
 
         # Finetune warm-start weights were already loaded at architecture
         # construction (__init__, self-contained ckpt-dir path). Step stays 0.
@@ -280,7 +283,7 @@ class OpenWAMTrainer:
             )
             if already_done:
                 logger.info("[resume] global_step=%d already complete; finishing.", global_step)
-                self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+                self.finish_training(output_path, global_step, opt_step, start_epoch, save_steps, keep_last_k, is_main, wandb_run)
                 return
             if skip_first > 0 and self._run_seed is None:
                 logger.warning(
@@ -361,7 +364,7 @@ class OpenWAMTrainer:
 
                 # save_steps: write the weights line (+ the resumable full state when
                 # save_full_states_for_resume=true), then prune in lockstep.
-                if save_steps and global_step > 0 and global_step % save_steps == 0:
+                if save_steps and global_step > 0 and (global_step % save_steps == 0 or global_step in initial_save_steps):
                     save_weights(self.accelerator, self.architecture, output_path, global_step, final=False)
                     if save_full_states_for_resume:
                         save_full_state(self.accelerator, output_path, global_step, opt_step, epoch)
@@ -370,11 +373,11 @@ class OpenWAMTrainer:
 
                 if max_steps and global_step >= max_steps:
                     pbar.close()
-                    self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+                    self.finish_training(output_path, global_step, opt_step, epoch, save_steps, keep_last_k, is_main, wandb_run)
                     return
 
         pbar.close()
-        self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+        self.finish_training(output_path, global_step, opt_step, epoch, save_steps, keep_last_k, is_main, wandb_run)
 
     # (3) Called by train() first — AdamW over the per-module (action/video) LR param groups.
     def build_optimizer(self) -> torch.optim.Optimizer:
@@ -685,27 +688,34 @@ class OpenWAMTrainer:
                 steps_per_sec=steps_per_sec,
             )
 
-    # (11) Called on every train() exit — final weights, drop resume state, close wandb.
+    # (11) Called on every train() exit — final weights/state, retention, close wandb.
     def finish_training(
         self,
         output_path: str,
         global_step: int,
+        opt_step: int,
+        epoch: int,
         save_steps,
         keep_last_k: int,
         is_main: bool,
         wandb_run,
     ) -> None:
-        """Unified teardown for every exit path: final weights, drop resume state, close wandb.
+        """Write the final checkpoint and retain full state when resume was requested.
 
-        Falsy ``save_steps`` = a profiling/no-write run, so no final artifact (matches the
-        periodic-save gating). After the final weights land, ``finalize_keep_weights_only``
-        removes every ``accel_state_step_*`` and retains the configured number of recent
-        weight checkpoints (rank-0, post-barrier).
+        A periodic save at the final step already has both artifacts; its completion
+        marker avoids writing them twice. A partial save has no marker and is redone.
         """
-        if save_steps:
+        keep_resume_state = bool(getattr(self.cfg.training, "save_full_states_for_resume", False))
+        state_marker = os.path.join(output_path, f"accel_state_step_{global_step}", "trainer_state.json")
+        if save_steps and not (keep_resume_state and os.path.isfile(state_marker)):
             save_weights(self.accelerator, self.architecture, output_path, global_step, final=True)
+            if keep_resume_state:
+                save_full_state(self.accelerator, output_path, global_step, opt_step, epoch)
         self.accelerator.wait_for_everyone()
         if is_main:
-            finalize_keep_weights_only(output_path, keep_last_k)
+            if keep_resume_state:
+                manage_checkpoints(output_path, keep_last_k)
+            else:
+                finalize_keep_weights_only(output_path, keep_last_k)
         if wandb_run is not None:
             wandb_run.finish()

@@ -319,3 +319,33 @@ def test_setup_output_dir_verifies_stats_before_reusing_resume_run(tmp_path, mon
     assert output_path == str(run_dir)
     assert resume_state_dir == str(state_dir)
     assert calls == [(str(run_dir), trainer.dataset)]
+
+
+def test_finish_training_keeps_complete_resume_state(tmp_path, monkeypatch):
+    """A requested full state must survive normal completion with matching weights."""
+    from types import SimpleNamespace
+    from omegaconf import OmegaConf
+    import openwam.train.openwam_trainer as trainer_module
+
+    (tmp_path / "checkpoint_step_1.safetensors").write_text("old")
+    _make_accel_state(tmp_path, 1, marker=True)
+    trainer = object.__new__(trainer_module.OpenWAMTrainer)
+    trainer.cfg = OmegaConf.create({"training": {"save_full_states_for_resume": True}})
+    trainer.accelerator = SimpleNamespace(wait_for_everyone=lambda: None)
+    trainer.architecture = object()
+    monkeypatch.setattr(
+        trainer_module,
+        "save_weights",
+        lambda acc, arch, output, step, final: (tmp_path / f"checkpoint_step_{step}.safetensors").write_text("new"),
+    )
+    monkeypatch.setattr(
+        trainer_module,
+        "save_full_state",
+        lambda acc, output, step, opt_step, epoch: _make_accel_state(tmp_path, step, marker=True),
+    )
+
+    trainer.finish_training(str(tmp_path), 2, 2, 0, 2, 1, True, None)
+
+    assert sorted(p.name for p in tmp_path.glob("checkpoint_step_*")) == ["checkpoint_step_2.safetensors"]
+    assert sorted(p.name for p in tmp_path.glob("accel_state_step_*")) == ["accel_state_step_2"]
+    assert find_latest_accel_state(str(tmp_path)) == str(tmp_path / "accel_state_step_2")
