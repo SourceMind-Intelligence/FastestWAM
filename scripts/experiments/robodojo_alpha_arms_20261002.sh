@@ -7,6 +7,7 @@
 # 8 GPUs x batch 16 = global batch 128. Every arm uses the same LR schedule
 # (500-step warmup, then constant LR) so the arms compare at equal steps.
 # ALPHA_CKPT is alpha's checkpoint dir in this tree; LR overrides the default 2e-5.
+# EXTRA_ARGS adds Hydra overrides (space-separated).
 set -euo pipefail
 cd /root/evan/Fastest-WAM-evan
 usage="usage: ALPHA_CKPT=<dir> $0 r1|r3|r4|r5 smoke|train-start|train-resume [run-dir]"
@@ -29,8 +30,9 @@ case "$arm" in
   *) echo "unknown arm: $arm" >&2; exit 2 ;;
 esac
 name="robodojo_alpha_${arm}_20261002"
+read -r -a extra_args <<< "${EXTRA_ARGS:-}"
 warmup_ratio=$(awk -v s="$steps" 'BEGIN { print 500 / s }')
-base=(dataloader=robodojo model.architecture.action_objective=flow ${arm_args[@]+"${arm_args[@]}"} training.batch_size=16 training.gradient_accumulation_steps=1 training.zero_stage=2 training.keep_last_k_ckpts=2 training.num_epochs=null project.seed=42)
+base=(dataloader=robodojo model.architecture.action_objective=flow ${arm_args[@]+"${arm_args[@]}"} training.batch_size=16 training.gradient_accumulation_steps=1 training.zero_stage=2 training.keep_last_k_ckpts=2 training.num_epochs=null project.seed=42 ${extra_args[@]+"${extra_args[@]}"})
 schedule=(training.max_steps="$steps" training.learning_rate="$lr" training.lr_scheduler=cosine training.lr_min_ratio=1.0 training.warmup_ratio="$warmup_ratio" training.save_steps="$save_steps" training.save_full_states_for_resume=true)
 case "$mode" in
   smoke)
