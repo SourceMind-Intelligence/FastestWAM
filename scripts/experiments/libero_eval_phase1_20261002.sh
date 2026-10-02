@@ -5,6 +5,8 @@
 #   full   the whole benchmark; rerunning the same tag resumes from the results already written
 # STEPS sets the flow-matching denoise steps (default 10). A MIP checkpoint always takes its 2 passes.
 # Results land in outputs/libero/phase1_20261002/<tag>/summary.json. EVAL_ARGS adds scheduler flags.
+# A failed full eval writes the queue's PAUSE file, so the R arms wait instead of taking the GPUs
+# before the eval is fixed and rerun (same tag resumes); remove PAUSE to let the queue go on.
 set -euo pipefail
 cd /root/evan/Fastest-WAM-evan
 usage="usage: LIBERO_PYTHON=<python> LIBERO_PATH=<dir> $0 smoke|full <run-dir> <tag>"
@@ -28,4 +30,12 @@ case "$mode" in
   full) ;;
   *) echo "unknown mode: $mode" >&2; exit 2 ;;
 esac
-exec bash benchmarks/libero/run_eval.sh "$run_dir" "$(basename "$ckpt")" "${args[@]}"
+rc=0
+bash benchmarks/libero/run_eval.sh "$run_dir" "$(basename "$ckpt")" "${args[@]}" || rc=$?
+if [[ "$rc" -ne 0 && "$mode" == full ]]; then
+  log_dir=logs/phase1-20261002
+  mkdir -p "$log_dir"
+  touch "$log_dir/PAUSE"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) PAUSE set: eval $tag exit $rc; fix it, rerun this tag, then remove PAUSE" >> "$log_dir/status.txt"
+fi
+exit "$rc"
