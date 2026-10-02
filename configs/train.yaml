@@ -42,6 +42,8 @@ training:
   # --- Loss weights ---
   lambda_video: 1.0               # Video flow-matching loss weight
   lambda_action: 1.0              # Action flow-matching loss weight
+  video_xm_k: 1                  # 1 = ordinary video FM; 2 = Forward XM over two video noises
+  video_xm_mix: 1.0              # Probability of using the best candidate (1.0 = pure XM)
 
   # --- Flow matching timestep range ---
   max_timestep_boundary: 1.0      # Upper bound (fraction of total timesteps)

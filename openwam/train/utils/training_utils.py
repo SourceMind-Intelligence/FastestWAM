@@ -127,6 +127,10 @@ def reduce_step_metrics(accelerator, losses: dict, grad_norm) -> dict:
     if "mip_t0" in losses:
         extra_pairs.append(("loss_mip_t0", _f(losses["mip_t0"])))
         extra_pairs.append(("loss_mip_t09", _f(losses["mip_t09"])))
+    if "xm_alt_fraction" in losses:
+        extra_pairs.append(("xm_alt_fraction", _f(losses["xm_alt_fraction"])))
+        extra_pairs.append(("xm_candidate0_loss", _f(losses["xm_candidate0_loss"])))
+        extra_pairs.append(("xm_best_loss", _f(losses["xm_best_loss"])))
 
     values = [
         loss.detach().float().item(),
@@ -187,6 +191,9 @@ def write_scaling_metrics_row(
         "loss_action": float(metrics.get("loss_action", 0.0)),
         "loss_mip_t0": float(metrics["loss_mip_t0"]) if "loss_mip_t0" in metrics else None,
         "loss_mip_t09": float(metrics["loss_mip_t09"]) if "loss_mip_t09" in metrics else None,
+        "xm_alt_fraction": float(metrics["xm_alt_fraction"]) if "xm_alt_fraction" in metrics else None,
+        "xm_candidate0_loss": float(metrics["xm_candidate0_loss"]) if "xm_candidate0_loss" in metrics else None,
+        "xm_best_loss": float(metrics["xm_best_loss"]) if "xm_best_loss" in metrics else None,
         "grad_norm": float(metrics["grad_norm"]),
         "lr": float(lr),
         "steps_per_sec": float(steps_per_sec),

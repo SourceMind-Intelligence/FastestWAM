@@ -1205,6 +1205,8 @@ class BaseWAMArchitecture(ABC, nn.Module):
         actions: Optional[torch.Tensor] = None,
         lambda_video: float = 1.0,
         lambda_action: float = 1.0,
+        video_xm_k: int = 1,
+        video_xm_mix: float = 1.0,
         accelerator=None,
         **inputs,
     ) -> dict:
@@ -1266,6 +1268,8 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 actions = actions.unsqueeze(0)
 
         if self._action_objective == "mip" and lambda_action > 0 and actions is not None:
+            if video_xm_k != 1:
+                raise ValueError("video XM is only implemented for action_objective=flow")
             return self._compute_mip_action_loss(
                 actions=actions,
                 video_timesteps=video_timesteps,
@@ -1302,6 +1306,56 @@ class BaseWAMArchitecture(ABC, nn.Module):
             noisy_actions = action_scheduler.add_noise(actions, action_noise, a_sigma_bc)
             action_target = action_scheduler.training_target(actions, action_noise)
 
+        # Forward XM for the video FM target. Each sample keeps its own video
+        # timestep and condition, explores two independent noise assignments,
+        # and updates on the lower-loss assignment. No-grad probes keep peak
+        # activation memory close to ordinary training; the chosen assignment
+        # is replayed once with gradients. The action loss formula is unchanged,
+        # although its joint forward sees the selected video-noise assignment.
+        xm_metrics = {}
+        if video_xm_k != 1:
+            if video_xm_k != 2 or lambda_video <= 0:
+                raise ValueError("video XM requires K=2 and lambda_video > 0")
+            if not 0.0 <= video_xm_mix <= 1.0:
+                raise ValueError("video_xm_mix must be in [0, 1]")
+            clean_latents = inputs["input_latents"]
+            noises = (video_noise, torch.randn_like(clean_latents))
+            probe_scores = []
+            with torch.no_grad():
+                for candidate_noise in noises:
+                    candidate_inputs = dict(inputs)
+                    candidate_inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * candidate_noise
+                    if inputs.get("first_frame_latents") is not None:
+                        candidate_inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+                    candidate_pred, _ = self._loss_joint_forward(
+                        noisy_actions if lambda_action > 0 else None,
+                        action_timesteps if lambda_action > 0 else None,
+                        video_timesteps,
+                        candidate_inputs,
+                    )
+                    probe_scores.append(self._compute_video_loss(
+                        candidate_pred,
+                        candidate_noise - clean_latents,
+                        video_timestep_ids,
+                        candidate_inputs,
+                        _device,
+                        reduction="none",
+                    ))
+                    del candidate_pred, candidate_inputs
+            best_is_alt = probe_scores[1] < probe_scores[0]
+            if video_xm_mix < 1.0:
+                best_is_alt = best_is_alt & (torch.rand(B, device=_device) < video_xm_mix)
+            selected_noise = torch.where(best_is_alt.view(B, 1, 1, 1, 1), noises[1], noises[0])
+            inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * selected_noise
+            if inputs.get("first_frame_latents") is not None:
+                inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+            video_target = selected_noise - clean_latents
+            xm_metrics = {
+                "xm_alt_fraction": best_is_alt.float().mean().detach(),
+                "xm_candidate0_loss": probe_scores[0].mean().detach(),
+                "xm_best_loss": torch.minimum(*probe_scores).mean().detach(),
+            }
+
         video_noise_pred, action_noise_pred = self._loss_joint_forward(
             noisy_actions if lambda_action > 0 else None,
             action_timesteps if lambda_action > 0 else None,
@@ -1323,6 +1377,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 "loss": lambda_video * loss_video,
                 "loss_video": lambda_video * loss_video.detach(),
                 "loss_action": torch.tensor(0.0, device=loss_video.device),
+                **xm_metrics,
             }
 
         # --- Action loss ---
@@ -1344,9 +1399,10 @@ class BaseWAMArchitecture(ABC, nn.Module):
             "loss": loss,
             "loss_video": lambda_video * loss_video.detach(),
             "loss_action": lambda_action * loss_action.detach(),
+            **xm_metrics,
         }
 
-    def _compute_video_loss(self, noise_pred, target, timestep_ids, inputs, device):
+    def _compute_video_loss(self, noise_pred, target, timestep_ids, inputs, device, reduction="mean"):
         """Per-sample weighted video MSE loss."""
         import torch.nn.functional as F
 
@@ -1400,7 +1456,12 @@ class BaseWAMArchitecture(ABC, nn.Module):
         else:
             per_sample = per_frame.mean(dim=1)
 
-        return (per_sample * tw).mean()
+        weighted = per_sample * tw
+        if reduction == "none":
+            return weighted
+        if reduction != "mean":
+            raise ValueError(f"unsupported video loss reduction: {reduction}")
+        return weighted.mean()
 
     def _compute_action_loss(self, noise_pred, target, timestep_ids, scheduler, inputs, device):
         """Per-sample weighted action MSE loss.

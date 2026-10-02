@@ -157,6 +157,15 @@ class OpenWAMTrainer:
         # Loss weights from the training config
         self.lambda_video = float(t.lambda_video)
         self.lambda_action = float(t.lambda_action)
+        self.video_xm_k = int(t.get("video_xm_k", 1))
+        self.video_xm_mix = float(t.get("video_xm_mix", 1.0))
+        if self.video_xm_k not in (1, 2):
+            raise ValueError("video_xm_k currently supports only 1 or 2")
+        if not 0.0 <= self.video_xm_mix <= 1.0:
+            raise ValueError("video_xm_mix must be in [0, 1]")
+        if self.video_xm_k > 1 and str(m.architecture.action_objective) != "flow":
+            raise ValueError("video XM pilot currently supports action_objective=flow only")
+        logger.info("Video objective: Forward XM K=%d mix=%.3f", self.video_xm_k, self.video_xm_mix)
 
         # Push forward-time training flags onto the architecture so prepare_inputs
         # is self-contained.
@@ -570,6 +579,8 @@ class OpenWAMTrainer:
             **inputs,
             lambda_video=self.lambda_video,
             lambda_action=self.lambda_action,
+            video_xm_k=self.video_xm_k,
+            video_xm_mix=self.video_xm_mix,
             accelerator=self.accelerator if getattr(self.architecture, "_action_objective", "flow") == "mip" else None,
         )
 
@@ -582,6 +593,10 @@ class OpenWAMTrainer:
         if "loss_mip_t0" in result:
             out["mip_t0"] = result["loss_mip_t0"]
             out["mip_t09"] = result["loss_mip_t09"]
+        if "xm_alt_fraction" in result:
+            out["xm_alt_fraction"] = result["xm_alt_fraction"]
+            out["xm_candidate0_loss"] = result["xm_candidate0_loss"]
+            out["xm_best_loss"] = result["xm_best_loss"]
         return out
 
     # (10) Called each step in train()'s loop — progress bar, wandb log, debug loss-history CSV.
@@ -642,6 +657,10 @@ class OpenWAMTrainer:
             if "loss_mip_t0" in metrics:
                 log_dict["train/mip_loss_t0"] = metrics["loss_mip_t0"]
                 log_dict["train/mip_loss_t09"] = metrics["loss_mip_t09"]
+            if "xm_alt_fraction" in metrics:
+                log_dict["train/xm_alt_fraction"] = metrics["xm_alt_fraction"]
+                log_dict["train/xm_candidate0_loss"] = metrics["xm_candidate0_loss"]
+                log_dict["train/xm_best_loss"] = metrics["xm_best_loss"]
             for name, key in labels:
                 log_dict[f"train/loss_{name}"] = metrics[key]
             wandb_run.log(log_dict, step=global_step)
