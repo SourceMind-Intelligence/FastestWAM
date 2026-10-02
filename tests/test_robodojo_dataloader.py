@@ -887,3 +887,40 @@ def test_decode_jpeg_undoes_the_recorder_channel_swap():
     # And the PIL reading of the very same bytes is the swap this guards against.
     stored = np.asarray(Image.open(io.BytesIO(encode_jpeg(red))).convert("RGB"))
     assert stored[0, 0, 2] > 200 and stored[0, 0, 0] < 60
+
+
+def test_history_frames_are_sampled_before_the_window_and_clamped_to_episode_start(tmp_path: Path):
+    write_episode(tmp_path, T=8)
+    plain = build_single(tmp_path, num_frames=3)
+    history = build_single(tmp_path, num_frames=3, history_num_frames=2, history_stride=2)
+
+    def first_frame_at(start: int) -> np.ndarray:
+        index = plain._window_index.index((0, start))
+        return np.asarray(plain[index]["video"][0])
+
+    assert plain[0]["history_images"] is None
+    for start in (0, 1, 3, 5):
+        sample = history[history._window_index.index((0, start))]
+        frames = sample["history_images"]
+        assert len(frames) == 2
+        # Oldest first: start-4, then start-2, each clamped to frame 0.
+        np.testing.assert_array_equal(np.asarray(frames[0]), first_frame_at(max(start - 4, 0)))
+        np.testing.assert_array_equal(np.asarray(frames[1]), first_frame_at(max(start - 2, 0)))
+        np.testing.assert_array_equal(np.asarray(sample["video"][0]), first_frame_at(start))
+
+
+def test_history_frames_share_the_clip_color_jitter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    write_episode(tmp_path, T=6)
+    jitter = {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.0}
+    clean = build_single(tmp_path, num_frames=3, history_num_frames=1, history_stride=2)
+    train = build_single(tmp_path, num_frames=3, history_num_frames=1, history_stride=2, color_jitter=jitter)
+    monkeypatch.setattr("random.uniform", lambda lower, upper: upper)
+    index = train._window_index.index((0, 2))
+    jittered = train[index]
+    plain = clean[index]
+    assert not np.array_equal(np.asarray(jittered["history_images"][0]), np.asarray(plain["history_images"][0]))
+    # The history frame at start-2 = frame 0 is jittered exactly like frame 0 of window 0.
+    np.testing.assert_array_equal(
+        np.asarray(jittered["history_images"][0]),
+        np.asarray(train[train._window_index.index((0, 0))]["video"][0]),
+    )

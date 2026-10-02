@@ -12,7 +12,10 @@ The executor is chosen once at construction from the normalized async
 config; per-step dispatch is plain delegation.
 """
 
+from collections import deque
+
 import numpy as np
+from omegaconf import OmegaConf
 
 from openwam.deploy.engine import BaseInferenceEngine
 from openwam.deploy.executors import (
@@ -20,6 +23,18 @@ from openwam.deploy.executors import (
     SyncInferenceExecutor,
     normalize_execution_config,
 )
+
+
+def _cfg_select(cfg, path: str, default):
+    """Read a dotted key from an OmegaConf config or a plain namespace/dict."""
+    if OmegaConf.is_config(cfg):
+        return OmegaConf.select(cfg, path, default=default)
+    node = cfg
+    for key in path.split("."):
+        node = node.get(key) if isinstance(node, dict) else getattr(node, key, None)
+        if node is None:
+            return default
+    return node
 
 
 class WAMPolicy:
@@ -35,6 +50,12 @@ class WAMPolicy:
     def __init__(self, engine: BaseInferenceEngine, cfg, execution_config=None):
         self.cfg = cfg
         self.engine = engine
+
+        # History (memory) contract comes from the CKPT's dataloader config, so
+        # deploy samples past frames exactly as training did; 0 frames = off.
+        self._history_num_frames = int(_cfg_select(cfg, "dataloader.history_num_frames", 0) or 0)
+        self._history_stride = int(_cfg_select(cfg, "dataloader.history_stride", 25) or 25)
+        self._frames = deque(maxlen=self._history_num_frames * self._history_stride + 1)
 
         self._execution_config = normalize_execution_config(execution_config)
         self._async = self._execution_config.enabled
@@ -74,8 +95,9 @@ class WAMPolicy:
         return action
 
     def reset(self):
-        """Clear executor state between episodes."""
+        """Clear executor state and frame history between episodes."""
         self._executor.reset()
+        self._frames.clear()
 
     def shutdown(self):
         """Release executor resources (background threads in async mode)."""
@@ -95,8 +117,21 @@ class WAMPolicy:
         if img is not None:
             # Single first frame — pipeline expects list[PIL.Image]
             conditions["first_frame_image"] = [img]
+            if self._history_num_frames:
+                conditions["history_images"] = self._history_frames(img)
         if obs.get("prompt"):
             conditions["prompt"] = obs["prompt"]
         if "state" in obs and obs["state"] is not None:
             conditions["proprio"] = obs["state"]
         return conditions
+
+    def _history_frames(self, img) -> list:
+        """Record this step's frame and return the past ones, oldest first.
+
+        One call per environment step. Frame ``k`` is the one seen
+        ``k * history_stride`` steps ago; before that many steps have passed it
+        is the episode's first frame, matching the training reader's clamp.
+        """
+        self._frames.append(img)
+        newest = len(self._frames) - 1
+        return [self._frames[max(newest - k * self._history_stride, 0)] for k in range(self._history_num_frames, 0, -1)]

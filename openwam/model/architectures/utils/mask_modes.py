@@ -63,14 +63,18 @@ def fill_cross_modal_va_blocks(
     a_end: int,
     mode: str,
     video_tokens_per_frame: int,
+    clean_prefix_frames: int = 1,
 ) -> None:
     """Fill the v->a and a->v blocks in place.
 
     Both directions are assigned explicitly (nothing relies on the initial
     fill), so masks starting from zeros and from ones are equally correct.
+    ``clean_prefix_frames`` is the number of leading clean conditioning frames
+    (the first frame, plus any history frames before it); they are treated
+    the way the single first frame always was.
     """
     s_video = v_end - v_start
-    ff = min(video_tokens_per_frame, s_video)  # tokens in the first frame
+    ff = min(video_tokens_per_frame * max(int(clean_prefix_frames), 1), s_video)  # clean-prefix tokens
 
     # a->v: does action see video?
     if mode in (ACTION_SEES_VIDEO, MUTUAL):
@@ -96,6 +100,7 @@ def build_cross_modal_attention_mask(
     mode: str,
     device: torch.device,
     n_readonly_tail: int = 0,
+    clean_prefix_frames: int = 1,
 ) -> torch.Tensor:
     """Build the ``[video, action, tail]`` bool attention mask (True = visible).
 
@@ -111,10 +116,12 @@ def build_cross_modal_attention_mask(
     total = s_video + s_action + int(n_readonly_tail)
     mask = torch.zeros((total, total), dtype=torch.bool, device=device)
 
+    v2v_kwargs = {"clean_prefix_frames": int(clean_prefix_frames)} if clean_prefix_frames > 1 else {}
     mask[:s_video, :s_video] = video_backbone.build_video_to_video_mask(
         video_seq_len=s_video,
         video_tokens_per_frame=video_tokens_per_frame,
         device=device,
+        **v2v_kwargs,
     )
     a_start, a_end = s_video, s_video + s_action
     mask[a_start:a_end, a_start:a_end] = True
@@ -126,6 +133,7 @@ def build_cross_modal_attention_mask(
         a_end=a_end,
         mode=mode,
         video_tokens_per_frame=video_tokens_per_frame,
+        clean_prefix_frames=clean_prefix_frames,
     )
 
     if n_readonly_tail:

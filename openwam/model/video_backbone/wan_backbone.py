@@ -221,10 +221,20 @@ class WanBase(VideoBackbone):
         video_seq_len: int,
         video_tokens_per_frame: int,
         device: torch.device,
+        clean_prefix_frames: int = 1,
     ) -> torch.Tensor:
         """Build the video↔video block of the joint MoT attention mask
         (``True`` = attend to). Layout matches FastWAM's equivalent.
+
+        ``clean_prefix_frames`` > 1 (history frames before the first frame) is
+        supported in ``first_frame_causal`` mode: the whole clean prefix plays
+        the first frame's role and never attends to the noisy frames.
         """
+        if clean_prefix_frames > 1 and self.video_attention_mask_mode != "first_frame_causal":
+            raise ValueError(
+                f"History frames need video_attention_mask_mode='first_frame_causal', "
+                f"got {self.video_attention_mask_mode!r}."
+            )
         mode = self.video_attention_mask_mode
         if mode == "bidirectional":
             return torch.ones((video_seq_len, video_seq_len), dtype=torch.bool, device=device)
@@ -243,8 +253,8 @@ class WanBase(VideoBackbone):
 
         if mode == "first_frame_causal":
             video_mask = torch.ones((video_seq_len, video_seq_len), dtype=torch.bool, device=device)
-            first_frame_tokens = min(video_tokens_per_frame, video_seq_len)
-            # First-frame rows attend only to first-frame keys; later rows stay True.
+            first_frame_tokens = min(video_tokens_per_frame * max(int(clean_prefix_frames), 1), video_seq_len)
+            # Clean-prefix rows attend only to clean-prefix keys; later rows stay True.
             video_mask[:first_frame_tokens, first_frame_tokens:] = False
             return video_mask
 
@@ -445,6 +455,9 @@ class WanBase(VideoBackbone):
             "dit": dit,
             "vace": vace,
             "time_embed": time_embed,  # Wan head time embedding; consumed in finalize()
+            # Leading clean conditioning frames (first frame plus history); the
+            # MoT driver sizes the clean-prefix rows of its joint mask from this.
+            "clean_prefix_frames": max(int(num_clean_prefix_frames or 0), 1),
         }
         vace_hints = None
         if vace_context is not None:
@@ -803,6 +816,21 @@ class WanBase(VideoBackbone):
             first_frame_image=kw.get("first_frame_image"),
         )
 
+        history_images = kw.get("history_images")
+        if history_images is not None:
+            # Clean history latents go in front of the clip; together with the
+            # TI2V first frame they form one clean prefix that the loss skips.
+            if cond.get("first_frame_latents") is None:
+                raise ValueError(
+                    "history_images need the TI2V first-frame path (wan22_ti2v_5b with first_frame_image)."
+                )
+            history_latents = wan_conditioning.encode_history_latents(
+                history_images, encoder=self.video_encoder, vae=self.vae, dtype=dtype, device=device
+            )
+            input_latents = torch.cat([history_latents, input_latents], dim=2)
+            cond["first_frame_latents"] = input_latents[:, :, : history_latents.shape[2] + 1].clone()
+            cond["num_clean_prefix_frames"] = history_latents.shape[2] + 1
+
         return {
             "input_latents": input_latents,
             "context": context,
@@ -1038,6 +1066,12 @@ class WanBase(VideoBackbone):
             dtype=self.dtype,
             device=self.device,
         )
+        history_images = kw.get("history_images")
+        if history_images:
+            history_latents = wan_conditioning.encode_history_latents(
+                [list(history_images)], encoder=self.video_encoder, vae=self.vae, dtype=self.dtype, device=self.device
+            )
+            wan_conditioning.prepend_history_to_ti2v_inputs(inputs_shared, history_latents)
         return inputs_shared
 
 

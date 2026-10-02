@@ -124,6 +124,7 @@ class DualSystemMoTDriver:
         video_tokens_per_frame: int,
         *,
         device: torch.device,
+        clean_prefix_frames: int = 1,
     ) -> Tensor:
         """Build the ``[Sv+Sa, Sv+Sa]`` cross-modal bool mask for the configured mode.
 
@@ -138,6 +139,7 @@ class DualSystemMoTDriver:
             video_tokens_per_frame=video_tokens_per_frame,
             mode=self.attention_mask_mode,
             device=device,
+            clean_prefix_frames=clean_prefix_frames,
         )
 
     def _mixed_attention(
@@ -378,6 +380,7 @@ class DualSystemMoTDriver:
             s_action=s_action,
             video_tokens_per_frame=self._video_tokens_per_frame(vstate),
             device=vstate.hidden_states.device,
+            clean_prefix_frames=int((vstate.extras or {}).get("clean_prefix_frames", 1)),
         )
 
         # Backbones may prepend prefix K/V tokens (keys without matching query

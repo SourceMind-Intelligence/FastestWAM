@@ -919,6 +919,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
         all_prompts: list = []
         all_vace_videos: list = []
         all_ref_images: list = []
+        all_history_images: list = []
         all_actions: list = []
         all_proprios: list = []
         all_proprio_masks: list = []
@@ -930,6 +931,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
             all_prompts.append(sample["prompt"])
             all_vace_videos.append(sample.get("vace_video"))
             all_ref_images.append(sample.get("first_frame_image"))
+            all_history_images.append(sample.get("history_images"))
 
             action = sample.get("action")
             if action is not None:
@@ -986,11 +988,17 @@ class BaseWAMArchitecture(ABC, nn.Module):
         if any(ref_flags) and not all(ref_flags):
             raise ValueError("Mixed reference images in batch: all samples must be consistent.")
 
+        history_flags = [h is not None for h in all_history_images]
+        if any(history_flags) and not all(history_flags):
+            raise ValueError("Mixed history frames in batch: all samples must be consistent.")
+        # Only history-aware backbones (Wan TI2V) take ``history_images``.
+        history_kwargs = {"history_images": all_history_images} if history_flags and history_flags[0] else {}
         preprocessed = self.preprocess(
             frames=all_frames,
             text=all_prompts,
             vace_videos=all_vace_videos,
             ref_images=all_ref_images if ref_flags[0] else None,
+            **history_kwargs,
         )
 
         action_data = torch.cat(all_actions, dim=0) if all_actions[0] is not None else None
@@ -1269,7 +1277,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
         video_target = video_noise - inputs["input_latents"]
 
         if inputs.get("first_frame_latents") is not None:
-            inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+            inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
 
         if lambda_action > 0 and actions is not None:
             actions = actions.to(dtype=_dtype, device=_device)
@@ -1335,7 +1343,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                     candidate_inputs = dict(inputs)
                     candidate_inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * candidate_noise
                     if inputs.get("first_frame_latents") is not None:
-                        candidate_inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+                        candidate_inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
                     candidate_pred, _ = self._loss_joint_forward(
                         noisy_actions if lambda_action > 0 else None,
                         action_timesteps if lambda_action > 0 else None,
@@ -1357,7 +1365,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
             selected_noise = torch.where(best_is_alt.view(B, 1, 1, 1, 1), noises[1], noises[0])
             inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * selected_noise
             if inputs.get("first_frame_latents") is not None:
-                inputs["latents"][:, :, 0:1] = inputs["first_frame_latents"]
+                inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
             video_target = selected_noise - clean_latents
             xm_metrics = {
                 "xm_alt_fraction": best_is_alt.float().mean().detach(),
@@ -1678,6 +1686,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
         *,
         vace_video=None,
         first_frame_image=None,
+        history_images=None,
         num_frames: int = 49,
         action_num_frames: Optional[int] = None,
         height: int = 384,
@@ -1772,6 +1781,9 @@ class BaseWAMArchitecture(ABC, nn.Module):
             prompt_embed_cache=prompt_embed_cache,
             cfg_scale=cfg_scale,
             cfg_merge=cfg_merge,
+            # Past frames (oldest first) for history-trained checkpoints; only
+            # history-aware backbones (Wan TI2V) receive the key.
+            **({"history_images": history_images} if history_images else {}),
         )
 
         if profile:

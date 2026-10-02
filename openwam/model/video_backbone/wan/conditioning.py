@@ -91,6 +91,53 @@ def build_deploy_i2v_y(
     return y
 
 
+def encode_history_latents(history_images, *, encoder, vae, dtype, device) -> Tensor:
+    """Encode per-sample history frames as clean TI2V prefix latents.
+
+    ``history_images`` is a list (one entry per sample) of equal-length lists of
+    PIL frames, oldest first. Each frame is encoded on its own as a one-frame
+    clip, exactly like the TI2V first frame, so it yields one latent frame.
+    Returns ``(B, z_dim, K, H_lat, W_lat)``.
+    """
+    lengths = {len(frames) for frames in history_images}
+    if len(lengths) != 1:
+        raise ValueError(f"All samples must carry the same number of history frames, got {sorted(lengths)}.")
+    num_history = lengths.pop()
+    pixels = torch.cat(
+        [
+            wan_encode.preprocess_video([image], encoder=encoder, dtype=dtype, device=device)
+            for frames in history_images
+            for image in frames
+        ],
+        dim=0,
+    )
+    latents = wan_encode.encode_video(pixels.to(device), vae=vae, encoder=encoder).to(dtype=dtype, device=device)
+    batch = len(history_images)
+    # (B*K, z, 1, h, w) -> (B, z, K, h, w)
+    latents = latents.view(batch, num_history, *latents.shape[1:]).squeeze(3)
+    return latents.permute(0, 2, 1, 3, 4).contiguous()
+
+
+def prepend_history_to_ti2v_inputs(inputs_shared: dict, history_latents: Tensor) -> None:
+    """Put clean history latents in front of the TI2V first frame for deploy.
+
+    The history frames join ``first_frame_latents`` as one clean prefix
+    (``num_clean_prefix_frames = K + 1``) and the denoising latents grow by K
+    frames; ``base.generate`` re-pins the whole prefix after every step.
+    """
+    first = inputs_shared.get("first_frame_latents")
+    if first is None:
+        raise ValueError("History frames need a TI2V first frame; no first_frame_latents were built.")
+    history_latents = history_latents.to(dtype=first.dtype, device=first.device)
+    prefix = torch.cat([history_latents, first], dim=2)
+    noise = inputs_shared["latents"]
+    latents = torch.cat([history_latents.to(dtype=noise.dtype, device=noise.device), noise], dim=2)
+    inputs_shared["first_frame_latents"] = prefix
+    inputs_shared["num_clean_prefix_frames"] = prefix.shape[2]
+    inputs_shared["noise"] = latents
+    inputs_shared["latents"] = latents
+
+
 def finalize_ti2v_first_frame_latents(inputs_shared: dict, first_frame_image, *, is_ti2v, encoder, vae, dtype, device):
     """Emit ``first_frame_latents`` for TI2V deploy: its ``seperated_timestep``
     DiT needs both ``fuse_vae_embedding_in_latents=True`` AND ``first_frame_latents``

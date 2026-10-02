@@ -254,6 +254,8 @@ class JointInferenceEngine(BaseInferenceEngine):
                 - first_frame_image (list[PIL.Image], optional): first frame of the
                   observation window; used as TI2V first-frame condition on Wan2.2-TI2V
                   or as VACE spatial reference on Wan2.1-VACE
+                - history_images (list[PIL.Image], optional): past frames, oldest
+                  first, for checkpoints trained with dataloader.history_num_frames
                 - num_frames (int, optional): raw state/action window length;
                   generated action chunk length is ``num_frames - 1``
                 - video_num_frames (int, optional): Wan video length after any
@@ -338,6 +340,7 @@ class JointInferenceEngine(BaseInferenceEngine):
                 "prompt": conditions.get("prompt", ""),
                 "vace_video": conditions.get("vace_video", None),
                 "first_frame_image": conditions.get("first_frame_image", None),
+                "history_images": conditions.get("history_images", None),
                 "num_frames": video_num_frames,
                 "action_num_frames": action_num_frames,
                 "height": conditions.get("height", getattr(inf_cfg, "height", 384)),

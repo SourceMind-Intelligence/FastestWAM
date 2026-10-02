@@ -35,6 +35,15 @@ multiview: true
 camera_layout: [cam_head, cam_left_wrist, cam_right_wrist]
 target_camera: cam_head
 
+# ── History (memory) ─────────────────────────────────────────────────────────
+# Past frames fed as clean conditioning before the first frame, oldest first,
+# every history_stride source frames. 0 = off (the released OpenWAM-α setup).
+# Needs the Wan TI2V backbone and model=dual_system joint_self_attn with
+# video_attention_mask_mode=first_frame_causal. Deploy reads both values from the
+# checkpoint config, so the policy samples past frames the same way.
+history_num_frames: 0
+history_stride: 25
+
 # ── Normalization ────────────────────────────────────────────────────────────
 # Pooled stats are discovered/auto-built under <dataset_dir>/meta/ for this
 # variant and embodiment. An explicit normalization_stats_path remains an API

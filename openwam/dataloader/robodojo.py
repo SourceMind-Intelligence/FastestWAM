@@ -689,6 +689,8 @@ class RoboDojoDataset(BaseDataset):
         unify_action_map: Any = None,
         unify_state_map: Any = None,
         color_jitter: Any = None,
+        history_num_frames: int = 0,
+        history_stride: int = 25,
     ):
         super().__init__()
         if action_mode != DEPLOY_ACTION_MODE:
@@ -706,6 +708,10 @@ class RoboDojoDataset(BaseDataset):
             raise ValueError(f"split must be 'train' or 'val', got {split!r}")
         if height <= 0 or width <= 0:
             raise ValueError(f"height and width must be positive, got {height}x{width}")
+        if int(history_num_frames) < 0 or int(history_stride) < 1:
+            raise ValueError(
+                f"history_num_frames must be >= 0 and history_stride >= 1, got {history_num_frames}, {history_stride}"
+            )
 
         self.action_mode = DEPLOY_ACTION_MODE
         self.embodiment = embodiment
@@ -721,6 +727,10 @@ class RoboDojoDataset(BaseDataset):
         self.num_video_frames = len(self._video_sample_indices)
         self.multiview = bool(multiview)
         self.target_camera = str(target_camera)
+        # Past frames before the window, oldest first, every ``history_stride``
+        # source frames (0 = off). Indices before the episode start clamp to frame 0.
+        self.history_num_frames = int(history_num_frames)
+        self.history_stride = int(history_stride)
 
         # Apply one sampled set of color factors to the assembled clip.  The
         # transform is intentionally train-only so validation/deployment input
@@ -967,6 +977,10 @@ class RoboDojoDataset(BaseDataset):
             for relative_index in self._video_sample_indices:
                 source_index = start + relative_index if relative_index < actual_length else episode_length - 1
                 sampled_video.append(self._video_at(handle, source_index))
+            history_video = [
+                self._video_at(handle, max(start - k * self.history_stride, 0))
+                for k in range(self.history_num_frames, 0, -1)
+            ]
 
         if actual_length < self.num_frames:
             states = np.concatenate(
@@ -982,7 +996,9 @@ class RoboDojoDataset(BaseDataset):
             )
 
         if self._color_jitter is not None:
-            sampled_video = self._color_jitter.apply({"video": sampled_video})["video"]
+            # One set of color factors for history and clip alike.
+            jittered = self._color_jitter.apply({"video": history_video + sampled_video})["video"]
+            history_video, sampled_video = jittered[: len(history_video)], jittered[len(history_video) :]
 
         # Binding order: raw EEF20 -> normalize -> unified 80-D scatter.
         transformed = states
@@ -1015,6 +1031,7 @@ class RoboDojoDataset(BaseDataset):
             "video": sampled_video,
             "vace_video": None,
             "first_frame_image": [sampled_video[0]],
+            "history_images": history_video if self.history_num_frames else None,
             "action": action,
             "action_mask": action_mask,
             "video_mask": video_mask,
@@ -1085,6 +1102,8 @@ class MultiTaskRoboDojoDataset(BaseDataset):
             unify_action_map=_config_get(config, "unify_action_map", None),
             unify_state_map=_config_get(config, "unify_state_map", None),
             color_jitter=_config_get(config, "color_jitter", None),
+            history_num_frames=int(_config_get(config, "history_num_frames", 0)),
+            history_stride=int(_config_get(config, "history_stride", 25)),
         )
 
     def __init__(
