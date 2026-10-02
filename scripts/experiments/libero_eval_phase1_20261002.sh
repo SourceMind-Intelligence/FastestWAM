@@ -16,7 +16,8 @@ run_dir="$(cd "$run_dir" && pwd)"
 ckpt="$(ls "$run_dir"/checkpoint_step_*.safetensors 2>/dev/null | sort -V | tail -1)"
 test -n "$ckpt" || { echo "no checkpoint in $run_dir" >&2; exit 2; }
 export PATH="/root/openwam-eval/env/bin:$PATH"
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONUNBUFFERED=1
+# The LIBERO client may run from another user's install; never write bytecode caches into it.
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 export SERVER_PYTHON=/root/openwam-eval/env/bin/python
 export GPUS="${GPUS:-0,1,2,3,4,5,6,7}" REPLICAS_PER_GPU="${REPLICAS_PER_GPU:-2}" BASE_PORT="${BASE_PORT:-8920}"
 export OUTPUT_DIR="$PWD/outputs/libero/phase1_20261002/$tag"
