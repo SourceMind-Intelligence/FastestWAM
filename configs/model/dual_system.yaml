@@ -2,6 +2,9 @@
 #   joint_cross_attn: video runs to completion; ActionDiT cross-attends its bridge features.
 #   joint_self_attn:  one mixed video/action self-attention per layer (MoT).
 #   idm:              teacher-forcing training + two-stage inference.
+#   dot:              Faster-WAM DoT; a shallow action head reads K/V fused from the
+#                     video layers' clean prefix (video never sees action). Inference runs
+#                     the video DiT once on the observed frames, then only the head.
 
 defaults:
   - video_backbone: wan22_ti2v_5b        # wan22_ti2v_5b | wan21_vace_1_3b | wan21_i2v_14b_480p | cosmos_predict25_2b | cosmos3_edge
@@ -18,12 +21,16 @@ freeze:
 
 architecture:
   framework: dual_system
-  variant: joint_self_attn   # joint_self_attn | joint_cross_attn | idm
+  variant: joint_self_attn   # joint_self_attn | joint_cross_attn | idm | dot
   # Action training/inference objective. ``flow`` is the original OpenWAM
   # flow-matching path (bit-identical). ``mip`` replaces only the action
   # loss and the 2-step action sampler; video flow-matching is unchanged.
   action_objective: flow     # flow | mip
   mip_t_star: 0.9            # MIP data-time of the second branch / second infer step
+  # Anchor the second MIP branch trains on: gt = 0.9*A + 0.1*z (paper form);
+  # mixed = 0.9*(0.5*A + 0.5*sg(A0_hat)) + 0.1*z and pred = 0.9*sg(A0_hat) + 0.1*z
+  # (detached self-forcing). Inference is the same 2-pass sampler for all three.
+  mip_refine_mode: gt        # gt | mixed | pred
 
   action_dim: 80             # 80 = unified action space (unify_action=true); raw width otherwise (e.g. robotwin eef=20, joint=14)
   use_proprioception: true   # true = dataloader must provide sample["proprio"], appended as one proprio token
@@ -42,6 +49,12 @@ architecture:
   # the checkpoint's action blocks at the listed layers.
   bridge_layers: null
   bridge_interval: 1
+
+  # dot only: action head depth, and which video layers feed KV-Fusion (null = every layer).
+  # Needs video_attention_mask_mode=first_frame_causal. Finetuning from a non-DoT checkpoint
+  # keeps its video weights and starts the head and KV-Fusion fresh.
+  dot_num_action_layers: 1
+  dot_video_layers: null
 
   mot_checkpoint_mixed_attn: true  # joint_self_attn/idm only: grad-checkpoint the mixed attention (VRAM down)
   detach_bridge: false             # joint_cross_attn only

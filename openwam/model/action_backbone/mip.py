@@ -18,6 +18,12 @@ from torch import Tensor
 
 MIP_T_STAR = 0.9
 
+# Weight of the detached first-pass prediction in the clean anchor the second
+# MIP pass trains on. ``gt`` is the paper form (anchor = ground truth);
+# ``mixed`` and ``pred`` are detached self-forcing, which trains the second
+# pass on the kind of anchor 2-step inference actually feeds it.
+MIP_REFINE_PRED_WEIGHT = {"gt": 0.0, "mixed": 0.5, "pred": 1.0}
+
 
 def mip_t_to_openwam_timestep(t_mip: float, num_train_timesteps: int = 1000) -> float:
     """Map MIP data-time ``t`` onto the OpenWAM ActionDiT timestep axis.
@@ -59,3 +65,22 @@ def mip_branch_input(actions: Tensor, t_mip: float, noise: Tensor | None = None)
     if noise is None:
         noise = torch.zeros_like(actions)
     return t * actions + (1.0 - t) * noise
+
+
+def mip_refine_anchor(actions: Tensor, pred0: Tensor, mode: str) -> Tensor:
+    """Clean anchor for the second MIP pass: ``(1-w) A + w sg(Â₀)``.
+
+    ``w`` comes from :data:`MIP_REFINE_PRED_WEIGHT`, so ``mixed`` trains on
+    ``0.9 (0.5 A + 0.5 sg(Â₀)) + 0.1 z`` once :func:`mip_branch_input` adds the
+    noise. The first-pass prediction is always detached, so the second pass
+    sends no gradient into the first.
+    """
+    if mode not in MIP_REFINE_PRED_WEIGHT:
+        raise ValueError(f"mip_refine_mode must be one of {sorted(MIP_REFINE_PRED_WEIGHT)}, got {mode!r}")
+    w = MIP_REFINE_PRED_WEIGHT[mode]
+    if w == 0.0:
+        return actions
+    pred0 = pred0.detach().to(dtype=actions.dtype)
+    if w == 1.0:
+        return pred0
+    return (1.0 - w) * actions + w * pred0

@@ -239,6 +239,7 @@ class _TinyGenerateArchitecture(BaseWAMArchitecture):
         self._dtype = torch.float32
         self.normalizer = normalizer
         self._use_proprioception_context = False
+        self._action_objective = "flow"
 
         class _ActionBackbone:
             action_dim = 20

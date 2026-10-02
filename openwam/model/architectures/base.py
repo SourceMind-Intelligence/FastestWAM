@@ -34,9 +34,11 @@ import torch
 from torch import Tensor, nn
 
 from openwam.model.action_backbone.mip import (
+    MIP_REFINE_PRED_WEIGHT,
     MIP_T_STAR,
     mip_action_timesteps,
     mip_branch_input,
+    mip_refine_anchor,
 )
 from openwam.model.compile_options import compile_enabled
 
@@ -193,6 +195,13 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 f"action_objective must be 'flow' or 'mip', got {self._action_objective!r}"
             )
         self._mip_t_star = float(self._cfg_get(cfg, "mip_t_star", MIP_T_STAR))
+        # Anchor of the second MIP pass during training: ``gt`` (paper form) or
+        # detached self-forcing (``mixed`` / ``pred``); see ``mip_refine_anchor``.
+        self._mip_refine_mode = str(self._cfg_get(cfg, "mip_refine_mode", "gt")).strip().lower()
+        if self._mip_refine_mode not in MIP_REFINE_PRED_WEIGHT:
+            raise ValueError(
+                f"mip_refine_mode must be one of {sorted(MIP_REFINE_PRED_WEIGHT)}, got {self._mip_refine_mode!r}"
+            )
 
         # Optional action normalizer for deployment. ``generate`` uses it to
         # return real-scale actions; deploy-side proprio preprocessing uses it
@@ -1080,6 +1089,15 @@ class BaseWAMArchitecture(ABC, nn.Module):
         inputs: dict,
     ) -> Tuple[Tensor, Optional[Tensor]]:
         """One joint video/action forward for loss, sharing the prepared video latents."""
+        return self(
+            noisy_actions,
+            action_timesteps,
+            **self._loss_forward_kwargs(inputs),
+            timestep=video_timesteps,
+        )
+
+    def _loss_forward_kwargs(self, inputs: dict) -> dict:
+        """Forward keyword arguments for a loss-time forward built from ``inputs``."""
         forward_inputs = dict(inputs)
         proprio = forward_inputs.pop("proprio", None)
         proprio_mask = forward_inputs.pop("proprio_mask", None)
@@ -1092,15 +1110,12 @@ class BaseWAMArchitecture(ABC, nn.Module):
         forward_inputs.pop("video_is_pad", None)
         if proprio_mask is not None:
             forward_inputs["_proprio_sample_mask"] = proprio_mask
-        return self(
-            noisy_actions,
-            action_timesteps,
-            proprio=proprio,
-            use_gradient_checkpointing=use_grad_ckpt,
-            use_gradient_checkpointing_offload=use_grad_ckpt_offload,
+        return {
+            "proprio": proprio,
+            "use_gradient_checkpointing": use_grad_ckpt,
+            "use_gradient_checkpointing_offload": use_grad_ckpt_offload,
             **forward_inputs,
-            timestep=video_timesteps,
-        )
+        }
 
     def _masked_action_mse(self, pred: Tensor, target: Tensor, inputs: dict) -> Tensor:
         """Masked MSE on action tensors without flow-matching timestep weights."""
@@ -1139,6 +1154,11 @@ class BaseWAMArchitecture(ABC, nn.Module):
     ) -> dict:
         """Two-branch MIP action loss; video stream stays flow-matching.
 
+        The second branch trains on ``t* · anchor + (1 - t*) · z`` where the
+        anchor follows ``mip_refine_mode``: ground truth (``gt``) or a mix with
+        the first branch's detached prediction (``mixed`` / ``pred``). Both
+        branches regress the ground-truth actions.
+
         When ``accelerator`` is provided, each branch is backwarded before the
         next forward so peak activation memory matches a single joint step.
 
@@ -1155,10 +1175,10 @@ class BaseWAMArchitecture(ABC, nn.Module):
         latents = inputs["latents"]
         ds_engine = getattr(getattr(accelerator, "deepspeed_engine_wrapped", None), "engine", None)
 
-        def _one_branch(t_mip, action_timesteps, noise=None):
+        def _one_branch(t_mip, action_timesteps, noise=None, anchor=None):
             branch_inputs = dict(inputs)
             branch_inputs["latents"] = latents.clone()
-            action_in = mip_branch_input(actions, t_mip, noise)
+            action_in = mip_branch_input(actions if anchor is None else anchor, t_mip, noise)
             video_pred, action_pred = self._loss_joint_forward(
                 action_in, action_timesteps, video_timesteps, branch_inputs
             )
@@ -1170,7 +1190,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 weighted = lambda_action * loss_action
             else:
                 weighted = lambda_video * loss_video + lambda_action * loss_action
-            return weighted, loss_video, loss_action
+            return weighted, loss_video, loss_action, action_pred.detach()
 
         def _backward_branch(loss, *, is_final: bool) -> None:
             if ds_engine is not None:
@@ -1179,7 +1199,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 return
             accelerator.backward(loss)
 
-        weighted0, loss_video_0, loss_t0 = _one_branch(0.0, t0)
+        weighted0, loss_video_0, loss_t0, pred0 = _one_branch(0.0, t0)
         branch0 = 0.5 * weighted0
         lv0 = loss_video_0.detach()
         la0 = loss_t0.detach()
@@ -1188,7 +1208,9 @@ class BaseWAMArchitecture(ABC, nn.Module):
             del weighted0, branch0, loss_video_0, loss_t0
 
         z = torch.randn_like(actions)
-        weighted09, loss_video_09, loss_t09 = _one_branch(t_star, t09, z)
+        anchor = mip_refine_anchor(actions, pred0, self._mip_refine_mode)
+        del pred0
+        weighted09, loss_video_09, loss_t09, _ = _one_branch(t_star, t09, z, anchor=anchor)
         branch09 = 0.5 * weighted09
         lv09 = loss_video_09.detach()
         la09 = loss_t09.detach()
@@ -1215,6 +1237,68 @@ class BaseWAMArchitecture(ABC, nn.Module):
             "loss_mip_t09": la09,
             "backward_done": backward_done,
         }
+
+    def _select_video_xm_noise(
+        self,
+        inputs: dict,
+        *,
+        video_noise: Tensor,
+        sigma_bc: Tensor,
+        video_timesteps: Tensor,
+        video_timestep_ids: Tensor,
+        probe_actions: Optional[Tensor],
+        probe_action_timesteps: Optional[Tensor],
+        video_xm_mix: float,
+        device: torch.device,
+    ) -> Tuple[Tensor, dict]:
+        """Forward XM (K=2): pick each sample's video noise by a no-grad probe.
+
+        Each sample keeps its own video timestep and condition, explores two
+        independent noise assignments, and updates on the lower-loss one. The
+        no-grad probes keep peak activation memory close to ordinary training;
+        the caller replays the chosen assignment once with gradients.
+
+        Writes the selected noisy latents into ``inputs["latents"]`` (first-frame
+        pin re-applied) and returns ``(video_target, xm_metrics)``.
+        """
+        B = video_noise.shape[0]
+        clean_latents = inputs["input_latents"]
+        noises = (video_noise, torch.randn_like(clean_latents))
+        probe_scores = []
+        with torch.no_grad():
+            for candidate_noise in noises:
+                candidate_inputs = dict(inputs)
+                candidate_inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * candidate_noise
+                if inputs.get("first_frame_latents") is not None:
+                    candidate_inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
+                candidate_pred, _ = self._loss_joint_forward(
+                    probe_actions,
+                    probe_action_timesteps,
+                    video_timesteps,
+                    candidate_inputs,
+                )
+                probe_scores.append(self._compute_video_loss(
+                    candidate_pred,
+                    candidate_noise - clean_latents,
+                    video_timestep_ids,
+                    candidate_inputs,
+                    device,
+                    reduction="none",
+                ))
+                del candidate_pred, candidate_inputs
+        best_is_alt = probe_scores[1] < probe_scores[0]
+        if video_xm_mix < 1.0:
+            best_is_alt = best_is_alt & (torch.rand(B, device=device) < video_xm_mix)
+        selected_noise = torch.where(best_is_alt.view(B, 1, 1, 1, 1), noises[1], noises[0])
+        inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * selected_noise
+        if inputs.get("first_frame_latents") is not None:
+            inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
+        xm_metrics = {
+            "xm_alt_fraction": best_is_alt.float().mean().detach(),
+            "xm_candidate0_loss": probe_scores[0].mean().detach(),
+            "xm_best_loss": torch.minimum(*probe_scores).mean().detach(),
+        }
+        return selected_noise - clean_latents, xm_metrics
 
     def compute_loss(
         self,
@@ -1284,10 +1368,32 @@ class BaseWAMArchitecture(ABC, nn.Module):
             if actions.dim() == 2:
                 actions = actions.unsqueeze(0)
 
+        if video_xm_k != 1:
+            if video_xm_k != 2 or lambda_video <= 0:
+                raise ValueError("video XM requires K=2 and lambda_video > 0")
+            if not 0.0 <= video_xm_mix <= 1.0:
+                raise ValueError("video_xm_mix must be in [0, 1]")
+
         if self._action_objective == "mip" and lambda_action > 0 and actions is not None:
+            xm_metrics = {}
             if video_xm_k != 1:
-                raise ValueError("video XM is only implemented for action_objective=flow")
-            return self._compute_mip_action_loss(
+                # XM picks the video noise once; both MIP branches then train on
+                # it. Probes carry the first branch's action input (zeros, t=0).
+                num_ts = int(getattr(self.action_scheduler, "num_train_timesteps", 1000))
+                video_target, xm_metrics = self._select_video_xm_noise(
+                    inputs,
+                    video_noise=video_noise,
+                    sigma_bc=sigma_bc,
+                    video_timesteps=video_timesteps,
+                    video_timestep_ids=video_timestep_ids,
+                    probe_actions=mip_branch_input(actions, 0.0),
+                    probe_action_timesteps=mip_action_timesteps(
+                        0.0, B, device=_device, dtype=_dtype, num_train_timesteps=num_ts
+                    ),
+                    video_xm_mix=video_xm_mix,
+                    device=_device,
+                )
+            result = self._compute_mip_action_loss(
                 actions=actions,
                 video_timesteps=video_timesteps,
                 video_target=video_target,
@@ -1299,6 +1405,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
                 dtype=_dtype,
                 accelerator=accelerator,
             )
+            return {**result, **xm_metrics}
 
         # --- Prepare action noise (flow-matching; unchanged) ---
         noisy_actions, action_target, action_timesteps, action_timestep_ids, action_sigmas, a_sigma_bc = (
@@ -1323,55 +1430,22 @@ class BaseWAMArchitecture(ABC, nn.Module):
             noisy_actions = action_scheduler.add_noise(actions, action_noise, a_sigma_bc)
             action_target = action_scheduler.training_target(actions, action_noise)
 
-        # Forward XM for the video FM target. Each sample keeps its own video
-        # timestep and condition, explores two independent noise assignments,
-        # and updates on the lower-loss assignment. No-grad probes keep peak
-        # activation memory close to ordinary training; the chosen assignment
-        # is replayed once with gradients. The action loss formula is unchanged,
-        # although its joint forward sees the selected video-noise assignment.
+        # Forward XM for the video FM target (see ``_select_video_xm_noise``).
+        # The action loss formula is unchanged, although its joint forward sees
+        # the selected video-noise assignment.
         xm_metrics = {}
         if video_xm_k != 1:
-            if video_xm_k != 2 or lambda_video <= 0:
-                raise ValueError("video XM requires K=2 and lambda_video > 0")
-            if not 0.0 <= video_xm_mix <= 1.0:
-                raise ValueError("video_xm_mix must be in [0, 1]")
-            clean_latents = inputs["input_latents"]
-            noises = (video_noise, torch.randn_like(clean_latents))
-            probe_scores = []
-            with torch.no_grad():
-                for candidate_noise in noises:
-                    candidate_inputs = dict(inputs)
-                    candidate_inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * candidate_noise
-                    if inputs.get("first_frame_latents") is not None:
-                        candidate_inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
-                    candidate_pred, _ = self._loss_joint_forward(
-                        noisy_actions if lambda_action > 0 else None,
-                        action_timesteps if lambda_action > 0 else None,
-                        video_timesteps,
-                        candidate_inputs,
-                    )
-                    probe_scores.append(self._compute_video_loss(
-                        candidate_pred,
-                        candidate_noise - clean_latents,
-                        video_timestep_ids,
-                        candidate_inputs,
-                        _device,
-                        reduction="none",
-                    ))
-                    del candidate_pred, candidate_inputs
-            best_is_alt = probe_scores[1] < probe_scores[0]
-            if video_xm_mix < 1.0:
-                best_is_alt = best_is_alt & (torch.rand(B, device=_device) < video_xm_mix)
-            selected_noise = torch.where(best_is_alt.view(B, 1, 1, 1, 1), noises[1], noises[0])
-            inputs["latents"] = (1 - sigma_bc) * clean_latents + sigma_bc * selected_noise
-            if inputs.get("first_frame_latents") is not None:
-                inputs["latents"][:, :, : inputs["first_frame_latents"].shape[2]] = inputs["first_frame_latents"]
-            video_target = selected_noise - clean_latents
-            xm_metrics = {
-                "xm_alt_fraction": best_is_alt.float().mean().detach(),
-                "xm_candidate0_loss": probe_scores[0].mean().detach(),
-                "xm_best_loss": torch.minimum(*probe_scores).mean().detach(),
-            }
+            video_target, xm_metrics = self._select_video_xm_noise(
+                inputs,
+                video_noise=video_noise,
+                sigma_bc=sigma_bc,
+                video_timesteps=video_timesteps,
+                video_timestep_ids=video_timestep_ids,
+                probe_actions=noisy_actions if lambda_action > 0 else None,
+                probe_action_timesteps=action_timesteps if lambda_action > 0 else None,
+                video_xm_mix=video_xm_mix,
+                device=_device,
+            )
 
         video_noise_pred, action_noise_pred = self._loss_joint_forward(
             noisy_actions if lambda_action > 0 else None,
@@ -1585,6 +1659,26 @@ class BaseWAMArchitecture(ABC, nn.Module):
         if not bool(inactive_action_dims.any()):
             return None
         return inactive_action_dims
+
+    def _generate_from_inputs(
+        self,
+        inputs_shared: dict,
+        schedule,
+        *,
+        action_num_frames: int,
+        decode_video: bool,
+        active_action_mask: Optional[Tensor],
+        cfg_scale_f: float,
+        seed: int,
+        profile: bool,
+        t0: float,
+    ) -> Optional[dict]:
+        """Architecture-specific generation from prepared inputs.
+
+        Returns ``None`` to run the joint video/action denoising below; an
+        architecture with its own inference loop (DoT) returns the result dict.
+        """
+        return None
 
     def _generate_mip_actions(
         self,
@@ -1809,6 +1903,20 @@ class BaseWAMArchitecture(ABC, nn.Module):
             if proprio is None:
                 raise ValueError("use_proprioception=True requires `proprio` during generation.")
             inputs_shared["proprio"] = proprio.to(device=device, dtype=dtype)
+
+        custom = self._generate_from_inputs(
+            inputs_shared,
+            schedule,
+            action_num_frames=action_num_frames,
+            decode_video=decode_video,
+            active_action_mask=active_action_mask,
+            cfg_scale_f=cfg_scale_f,
+            seed=seed,
+            profile=profile,
+            t0=t0,
+        )
+        if custom is not None:
+            return custom
 
         if self._action_objective == "mip":
             return self._generate_mip_actions(

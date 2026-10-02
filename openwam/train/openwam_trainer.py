@@ -163,8 +163,6 @@ class OpenWAMTrainer:
             raise ValueError("video_xm_k currently supports only 1 or 2")
         if not 0.0 <= self.video_xm_mix <= 1.0:
             raise ValueError("video_xm_mix must be in [0, 1]")
-        if self.video_xm_k > 1 and str(m.architecture.action_objective) != "flow":
-            raise ValueError("video XM pilot currently supports action_objective=flow only")
         logger.info("Video objective: Forward XM K=%d mix=%.3f", self.video_xm_k, self.video_xm_mix)
 
         # Push forward-time training flags onto the architecture so prepare_inputs
