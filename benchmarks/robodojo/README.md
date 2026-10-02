@@ -15,6 +15,25 @@ variants and embodiments) and the root README for the general training workflow.
 [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab) — please head over to that
 repository and follow its instructions for environment installation and evaluation.
 
+## Reproducing the OpenWAM-α baseline
+
+Needs a CUDA host with RoboDojo (Isaac Sim 5.1) and XPolicyLab's `policy/OpenWAM`
+adapter installed, plus the released `OpenWAM-Alpha-Sim-RoboDojo` checkpoint
+(~25 GB) symlinked into the adapter's `checkpoints/`.
+
+```bash
+XPL_OPENWAM_DIR=/path/to/RoboDojo/XPolicyLab/policy/OpenWAM \
+POLICY_ENV=openwam EVAL_ENV=robodojo POLICY_GPU=0 ENV_GPU=1 \
+  bash benchmarks/robodojo/run_openwam_baseline.sh       # 54 task dirs x seeds 0 1 2
+
+python benchmarks/robodojo/compare_to_reference.py /path/to/RoboDojo/eval_result/RoboDojo
+```
+
+The comparison aggregates exactly like RoboDojo's `summarize_result.py` and checks
+each task against `assets/robodojo_verification/openwam_robodojo_per_seed.json`
+with a pooled two-proportion z-test (|z| <= 3 counts as within noise) and the
+Avg SR against 11.92 (tolerance 1.5 points). It works on partial runs too.
+
 ## Results
 
 Scores from the OpenWAM paper. **Bold** = best, <u>underline</u> = second best; Type distinguishes WAM vs VLA. Column groups: GenStd/GenRand = generalization (standard/randomized), Prec = precision, LongH = long-horizon, Mem = memory, Open = open tasks; SR / Sc = success rate / progress score.
