@@ -11,6 +11,7 @@
 #   eval_l1_fm10, eval_l2_mip, eval_l1_fm2  full LIBERO on the final L1 and L2 weights, all 8 GPUs
 #   train_r1, train_r3, train_r4, train_r5  one after another, once alpha is in the tree
 # Alpha is ALPHA_CKPT, else the path written to logs/phase1-20261002/alpha_ckpt.txt; the R stages wait for it.
+# L_LR and L_EXTRA_ARGS reach only the LIBERO launcher, R_LR and R_EXTRA_ARGS only the RoboDojo one.
 # A failed smoke or training stage stops the queue; a failed eval is logged and the queue moves on.
 # A training run that dies is resumed once from its latest full state, or restarted when it has none.
 # Finished stages go to done.txt, so rerunning the queue picks up where it stopped. status.txt gets
@@ -68,6 +69,15 @@ gate() {
   return 0
 }
 
+# launch <launcher> <args...>: run a launcher with only its own LR and EXTRA_ARGS.
+launch() {
+  if [[ "$1" == "$libero_sh" ]]; then
+    LR="${L_LR:-}" EXTRA_ARGS="${L_EXTRA_ARGS:-}" "$@"
+  else
+    ALPHA_CKPT="$(alpha_dir)" LR="${R_LR:-}" EXTRA_ARGS="${R_EXTRA_ARGS:-}" "$@"
+  fi
+}
+
 # train_arm <launcher> <arm> <run name>: one training run, resumed or restarted once if it dies.
 train_arm() {
   local launcher="$1" arm="$2" name="$3" attempt dir
@@ -75,10 +85,10 @@ train_arm() {
     dir="$(latest_run_dir "$name")"
     if [[ -n "$dir" ]] && has_state "$dir"; then
       status "RUN $name resume from $dir (attempt $attempt)"
-      ALPHA_CKPT="$(alpha_dir)" "$launcher" "$arm" train-resume "$dir" >> "$log_dir/$name.log" 2>&1 && return 0
+      launch "$launcher" "$arm" train-resume "$dir" >> "$log_dir/$name.log" 2>&1 && return 0
     else
       status "RUN $name start (attempt $attempt)"
-      ALPHA_CKPT="$(alpha_dir)" "$launcher" "$arm" train-start >> "$log_dir/$name.log" 2>&1 && return 0
+      launch "$launcher" "$arm" train-start >> "$log_dir/$name.log" 2>&1 && return 0
     fi
     status "FAIL $name attempt $attempt exit $?"
     sleep 60
@@ -93,9 +103,9 @@ stop() {
 
 smoke_pair() {
   local rc1=0 rc2=0 p1 p2 arm
-  "$libero_sh" l1 smoke > "$log_dir/smoke_l1.log" 2>&1 &
+  launch "$libero_sh" l1 smoke > "$log_dir/smoke_l1.log" 2>&1 &
   p1=$!
-  "$libero_sh" l2 smoke > "$log_dir/smoke_l2.log" 2>&1 &
+  launch "$libero_sh" l2 smoke > "$log_dir/smoke_l2.log" 2>&1 &
   p2=$!
   wait "$p1" || rc1=$?
   wait "$p2" || rc2=$?
@@ -113,7 +123,7 @@ smoke_r1() {
   is_done smoke_r1 && return 0
   gate smoke_r1
   status "RUN smoke_r1 from $(alpha_dir)"
-  ALPHA_CKPT="$(alpha_dir)" "$robodojo_sh" r1 smoke > "$log_dir/smoke_r1.log" 2>&1 || stop "smoke_r1 failed, see smoke_r1.log"
+  launch "$robodojo_sh" r1 smoke > "$log_dir/smoke_r1.log" 2>&1 || stop "smoke_r1 failed, see smoke_r1.log"
   mark_done smoke_r1
 }
 
@@ -160,6 +170,8 @@ main() {
   }
   : "${FOUNDATION_CKPT:?set FOUNDATION_CKPT}" "${LIBERO_DATA:?set LIBERO_DATA}"
   export FOUNDATION_CKPT LIBERO_DATA
+  # Each stage sets its own GPUs, ports and overrides.
+  unset GPUS REPLICAS_PER_GPU BASE_PORT STEPS LR EXTRA_ARGS
   echo "$$" > "$log_dir/queue.pid"
   status "START queue ($mode) pid $$ at $(git rev-parse --short HEAD 2> /dev/null)"
 
