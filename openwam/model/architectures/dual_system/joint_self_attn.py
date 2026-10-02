@@ -126,6 +126,46 @@ class DualSystemSelfAttnArchitecture(BaseWAMArchitecture):
         )
         return self._mot_driver
 
+    def adapt_checkpoint_state_dict(self, state_dict: dict) -> dict:
+        """Warm-start a shallow action expert from a full-depth checkpoint.
+
+        A shallow expert keeps one action block per entry of ``bridge_layers``.
+        When the checkpoint holds one block per video layer, block ``i`` of this
+        model takes the checkpoint block at video layer ``bridge_layers[i]`` and
+        the remaining checkpoint blocks are dropped. A checkpoint that already
+        has the shallow layout loads unchanged.
+        """
+        ab = self.action_backbone
+        if ab is None:
+            return state_dict
+        prefix = "action_backbone.blocks."
+        source_blocks = sorted({int(k[len(prefix) :].split(".", 1)[0]) for k in state_dict if k.startswith(prefix)})
+        if len(source_blocks) == ab.num_layers:
+            return state_dict
+        bridge_layers = tuple(ab.bridge_layers)
+        if any(layer not in source_blocks for layer in bridge_layers):
+            raise ValueError(
+                f"Checkpoint has action blocks {source_blocks[:3]}..{source_blocks[-1:]} "
+                f"({len(source_blocks)} total) and cannot supply bridge_layers={bridge_layers}."
+            )
+        block_for_layer = {layer: idx for idx, layer in enumerate(bridge_layers)}
+        adapted = {}
+        for key, value in state_dict.items():
+            if not key.startswith(prefix):
+                adapted[key] = value
+                continue
+            layer, rest = key[len(prefix) :].split(".", 1)
+            idx = block_for_layer.get(int(layer))
+            if idx is not None:
+                adapted[f"{prefix}{idx}.{rest}"] = value
+        logger.info(
+            "Shallow action expert: kept checkpoint action blocks at video layers %s (%d of %d).",
+            bridge_layers,
+            len(bridge_layers),
+            len(source_blocks),
+        )
+        return adapted
+
     @property
     def mot_driver(self) -> DualSystemMoTDriver | None:
         """The MoT joint-attention driver (None if the architecture wasn't fully built)."""

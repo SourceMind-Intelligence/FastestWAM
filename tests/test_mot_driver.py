@@ -32,7 +32,16 @@ from tests.test_openwam_trainer import _MockVideoBackbone
 # ---------------------------------------------------------------------------
 
 
-def _make_action_dit(*, dim: int = 32, num_heads: int = 4, num_layers: int = 2, action_dim: int = 7) -> ActionDiT:
+def _make_action_dit(
+    *,
+    dim: int = 32,
+    num_heads: int = 4,
+    num_layers: int = 2,
+    action_dim: int = 7,
+    bridge_layers: Tuple[int, ...] | None = None,
+) -> ActionDiT:
+    if bridge_layers is not None:
+        num_layers = len(bridge_layers)
     return ActionDiT(
         action_dim=action_dim,
         dim=dim,
@@ -40,7 +49,7 @@ def _make_action_dit(*, dim: int = 32, num_heads: int = 4, num_layers: int = 2, 
         num_heads=num_heads,
         num_layers=num_layers,
         video_dim=dim,
-        bridge_layers=tuple(range(num_layers)),
+        bridge_layers=tuple(range(num_layers)) if bridge_layers is None else bridge_layers,
         variant="joint_self_attn",
         text_dim=dim,
     )
@@ -85,9 +94,86 @@ def _make_states(
 
 def test_driver_validates_num_layers():
     vb = _MockVideoBackbone(dim=32, num_layers=4, num_heads=4)
-    ab = _make_action_dit(dim=32, num_heads=4, num_layers=3)
+    ab = _make_action_dit(dim=32, num_heads=4, bridge_layers=(2, 4))
     with pytest.raises(ValueError, match="num_layers"):
         DualSystemMoTDriver(vb, ab)
+
+
+def test_driver_rejects_unordered_shallow_bridge_layers():
+    vb = _MockVideoBackbone(dim=32, num_layers=4, num_heads=4)
+    ab = _make_action_dit(dim=32, num_heads=4, bridge_layers=(3, 1))
+    with pytest.raises(ValueError, match="strictly increasing"):
+        DualSystemMoTDriver(vb, ab)
+
+
+def test_shallow_driver_runs_action_blocks_only_at_bridge_layers():
+    vb = _MockVideoBackbone(dim=32, num_layers=4, num_heads=4)
+    ab = _make_action_dit(dim=32, num_heads=4, bridge_layers=(1, 3))
+    ab.eval()
+    driver = DualSystemMoTDriver(vb, ab, mot_checkpoint_mixed_attn=False)
+    vstate, astate = _make_states(vb, ab, B=2, s_video=9, s_action=5)
+
+    seen = {"v": [], "a": []}
+    orig_v_pre = vb.pre_attn_at_layer
+    orig_a_pre = ab.pre_attn_at_layer
+
+    def _record(fn, key):
+        def inner(layer_id, *args, **kw):
+            seen[key].append(layer_id)
+            return fn(layer_id, *args, **kw)
+
+        return inner
+
+    vb.pre_attn_at_layer = _record(orig_v_pre, "v")
+    ab.pre_attn_at_layer = _record(orig_a_pre, "a")
+    try:
+        with torch.no_grad():
+            _, astate2 = driver.run_joint_loop(vstate, astate)
+    finally:
+        vb.pre_attn_at_layer = orig_v_pre
+        ab.pre_attn_at_layer = orig_a_pre
+
+    # Video runs every layer; action blocks 0 and 1 run at video layers 1 and 3.
+    assert seen == {"v": [0, 1, 2, 3], "a": [0, 1]}
+    assert driver.action_block_at_layer == {1: 0, 3: 1}
+    assert astate2.payload.x_action.shape == (2, 5, ab.dim)
+
+
+def test_shallow_action_expert_leaves_video_unchanged_when_video_does_not_see_action():
+    """Under action_sees_video the video stream never reads action tokens, so its
+    output must not depend on how many layers the action expert joins."""
+    torch.manual_seed(0)
+    vb = _MockVideoBackbone(dim=32, num_layers=4, num_heads=4)
+    deep = _make_action_dit(dim=32, num_heads=4, num_layers=4)
+    shallow = _make_action_dit(dim=32, num_heads=4, bridge_layers=(2, 3))
+    for ab in (deep, shallow):
+        ab.eval()
+    vstate, astate = _make_states(vb, deep, B=2, s_video=9, s_action=5)
+    _, astate_shallow = _make_states(vb, shallow, B=2, s_video=9, s_action=5)
+    vx0 = vstate.hidden_states.clone()
+
+    outs = []
+    for ab, ast in ((deep, astate), (shallow, astate_shallow)):
+        vstate.hidden_states = vx0.clone()
+        driver = DualSystemMoTDriver(vb, ab, mot_checkpoint_mixed_attn=False, attention_mask_mode=ACTION_SEES_VIDEO)
+        with torch.no_grad():
+            v_out, _ = driver.run_joint_loop(vstate, ast)
+        outs.append(v_out.hidden_states.clone())
+
+    torch.testing.assert_close(outs[0], outs[1])
+
+
+def test_shallow_driver_backward_under_gradient_checkpointing():
+    vb = _MockVideoBackbone(dim=32, num_layers=4, num_heads=4)
+    ab = _make_action_dit(dim=32, num_heads=4, bridge_layers=(0, 3))
+    ab.train()
+    driver = DualSystemMoTDriver(vb, ab, mot_checkpoint_mixed_attn=True, attention_mask_mode=MUTUAL)
+    vstate, astate = _make_states(vb, ab, B=2, s_video=9, s_action=5)
+    vstate.hidden_states.requires_grad_(True)
+    _, astate2 = driver.run_joint_loop(vstate, astate, use_gradient_checkpointing=True)
+    astate2.payload.x_action.sum().backward()
+    assert ab.blocks[0].self_attn.q.weight.grad is not None
+    assert ab.blocks[1].self_attn.q.weight.grad is not None
 
 
 def test_driver_validates_num_heads():

@@ -37,6 +37,9 @@ architecture:
 
   # ActionDiT layer selection: explicit list, or null + bridge_interval (1 = every layer, 2 = every other).
   # joint_cross_attn: which video layers feed the bridge; joint_self_attn/idm: sizes ActionDiT.
+  # joint_self_attn: a subset (e.g. [20,21,...,29]) is a shallow action expert that joins the
+  # mixed attention only at those video layers; finetuning from a full-depth checkpoint keeps
+  # the checkpoint's action blocks at the listed layers.
   bridge_layers: null
   bridge_interval: 1
 

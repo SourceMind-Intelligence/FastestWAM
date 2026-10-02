@@ -54,7 +54,19 @@ class IDMMoTDriver(DualSystemMoTDriver):
 
     At inference time (action-only stage 2), only cond_video tokens are present
     and the driver operates in a standard joint mode.
+
+    Requires a full-depth action expert: the IDM loops index action blocks by
+    video layer, so the shallow layout of :class:`DualSystemMoTDriver` is not
+    supported here.
     """
+
+    def __init__(self, vb, ab, **kwargs) -> None:
+        super().__init__(vb, ab, **kwargs)
+        if ab.num_layers != vb.num_layers:
+            raise ValueError(
+                f"IDMMoTDriver: action num_layers ({ab.num_layers}) must equal video num_layers "
+                f"({vb.num_layers}); a shallow action expert is only supported by joint_self_attn."
+            )
 
     def _build_teacher_forcing_mask(
         self,

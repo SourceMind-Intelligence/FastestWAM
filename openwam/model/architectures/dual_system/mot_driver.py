@@ -40,7 +40,11 @@ class DualSystemMoTDriver:
 
     Validates structural compatibility at construction time:
 
-    - ``vb.num_layers == ab.num_layers`` (one joint attention per layer)
+    - the action stream joins at ``ab.bridge_layers``: every video layer by
+      default (one joint attention per layer), or a strict subset for a
+      shallow action expert. Video layers outside the subset run a
+      video-only attention with the same v↔v mask, so the video stream sees
+      exactly what it would see under ``isolated`` / ``action_sees_video``.
     - ``vb.num_heads == ab.num_heads`` and ``vb.head_dim == ab.head_dim``
       (so concatenated Q/K/V can run through a single attention; FastWAM's
       "two experts share the per-head attention space" pattern)
@@ -66,11 +70,23 @@ class DualSystemMoTDriver:
         attention_mask_mode: str = ACTION_SEES_VIDEO,
         video_attention_mask_mode: Optional[str] = None,
     ) -> None:
-        if vb.num_layers != ab.num_layers:
-            raise ValueError(
-                f"DualSystemMoTDriver: video num_layers ({vb.num_layers}) must equal "
-                f"action num_layers ({ab.num_layers}) for joint self-attention."
-            )
+        if ab.num_layers == vb.num_layers:
+            # Full-depth MoT: action block i joins at video layer i. Any listed
+            # ``bridge_layers`` are informational here, as before.
+            action_layers = tuple(range(vb.num_layers))
+        else:
+            action_layers = tuple(int(i) for i in (getattr(ab, "bridge_layers", None) or ()))
+            if (
+                len(action_layers) != ab.num_layers
+                or list(action_layers) != sorted(set(action_layers))
+                or any(not 0 <= i < vb.num_layers for i in action_layers)
+            ):
+                raise ValueError(
+                    f"DualSystemMoTDriver: action num_layers ({ab.num_layers}) differs from video "
+                    f"num_layers ({vb.num_layers}), so bridge_layers ({action_layers}) must list one "
+                    f"strictly increasing video layer in [0, {vb.num_layers}) per action block "
+                    "(a shallow action expert)."
+                )
         if vb.num_heads != ab.num_heads:
             raise ValueError(
                 f"DualSystemMoTDriver: video num_heads ({vb.num_heads}) must equal "
@@ -86,6 +102,8 @@ class DualSystemMoTDriver:
         self.vb = vb
         self.ab = ab
         self.num_layers = vb.num_layers
+        # Video layer -> action block index; layers not listed run video-only.
+        self.action_block_at_layer = {layer_id: idx for idx, layer_id in enumerate(action_layers)}
         self.num_heads = vb.num_heads
         self.head_dim = vb.head_dim
         self.mot_checkpoint_mixed_attn = bool(mot_checkpoint_mixed_attn)
@@ -215,7 +233,27 @@ class DualSystemMoTDriver:
         ab = self.ab
 
         q_v, k_v, v_v, vpost = vb.pre_attn_at_layer(layer_id, vstate)
-        q_a, k_a, v_a, apost = ab.pre_attn_at_layer(layer_id, astate)
+        block_idx = self.action_block_at_layer.get(layer_id)
+        if block_idx is None:
+            # Shallow action expert: no action block here. Video attends only to
+            # itself (plus any prefix keys) under the v↔v slice of the joint mask;
+            # the action residual passes through unchanged.
+            video_mask = None
+            if attn_mask is not None:
+                # Rows are [video, action] queries; columns are [prefix, video, action] keys.
+                s_video = q_v.shape[1]
+                s_action = attn_mask.shape[-2] - s_video
+                video_mask = attn_mask[..., :s_video, : attn_mask.shape[-1] - s_action]
+            if self.mot_checkpoint_mixed_attn and ab.training and not suppress_inner_attn_ckpt:
+                attn_v = torch.utils.checkpoint.checkpoint(
+                    self._mixed_attention, q_v, k_v, v_v, video_mask, use_reentrant=False
+                )
+            else:
+                attn_v = self._mixed_attention(q_v, k_v, v_v, video_mask)
+            vstate = vb.post_attn_at_layer(layer_id, vstate, attn_v.contiguous(), vpost)
+            return vstate, astate
+
+        q_a, k_a, v_a, apost = ab.pre_attn_at_layer(block_idx, astate)
 
         if q_v.dtype != q_a.dtype:
             raise RuntimeError(
@@ -246,7 +284,7 @@ class DualSystemMoTDriver:
 
         attn_v, attn_a = mixed.split([s_video, s_action], dim=1)
         vstate = vb.post_attn_at_layer(layer_id, vstate, attn_v.contiguous(), vpost)
-        astate = ab.post_attn_at_layer(layer_id, astate, attn_a.contiguous(), apost)
+        astate = ab.post_attn_at_layer(block_idx, astate, attn_a.contiguous(), apost)
         return vstate, astate
 
     def _step_checkpointed(

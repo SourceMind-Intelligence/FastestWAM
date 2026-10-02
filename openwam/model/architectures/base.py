@@ -690,6 +690,15 @@ class BaseWAMArchitecture(ABC, nn.Module):
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         save_file(state_dict, path)
 
+    def adapt_checkpoint_state_dict(self, state_dict: dict) -> dict:
+        """Map a checkpoint's keys onto this architecture before loading.
+
+        Identity by default. Architectures whose module layout can legitimately
+        differ from the checkpoint they warm-start from (for example a shallow
+        action expert initialized from a full-depth one) override this.
+        """
+        return state_dict
+
     def load_checkpoint(self, path: str, strict: bool = True) -> None:
         """Load architecture state from a safetensors checkpoint.
 
@@ -709,7 +718,7 @@ class BaseWAMArchitecture(ABC, nn.Module):
         """
         from safetensors.torch import load_file
 
-        state_dict = load_file(path)
+        state_dict = self.adapt_checkpoint_state_dict(load_file(path))
         has_vlm = getattr(self, "vlm_backbone", None) is not None
         has_meta = any(p.device.type == "meta" for p in self.parameters())
         missing, unexpected = self.load_state_dict(state_dict, strict=False, assign=has_meta)

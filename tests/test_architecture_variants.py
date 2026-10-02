@@ -366,8 +366,9 @@ def test_dual_system_self_attn_bridge_interval_1():
     _run_compute_loss(arch)
 
 
-def test_dual_system_self_attn_rejects_interval_gt_1():
-    """joint_self_attn rejects bridge_interval>1 — every video layer must have a MoT step."""
+def test_dual_system_self_attn_interval_gt_1_builds_shallow_expert():
+    """joint_self_attn with bridge_interval>1 builds a shallow action expert that
+    joins the mixed attention at every third video layer."""
     cfg = {
         "framework": "dual_system",
         "variant": "joint_self_attn",
@@ -378,10 +379,11 @@ def test_dual_system_self_attn_rejects_interval_gt_1():
         "ffn_dim": 4 * WAN_VIDEO_DIM,
         "num_heads": 4,
     }
-    # Architecture constructs an ActionDiT with 10 layers, then DualSystemMoTDriver
-    # validates layer-count parity and raises.
-    with pytest.raises(ValueError, match="num_layers"):
-        _build_arch("dual_system_self_attn", cfg)
+    arch = _build_arch("dual_system_self_attn", cfg)
+    assert arch.action_backbone.bridge_layers == tuple(range(0, WAN_NUM_LAYERS, 3))
+    assert arch.action_backbone.num_layers == len(range(0, WAN_NUM_LAYERS, 3))
+    assert arch._mot_driver.num_layers == WAN_NUM_LAYERS
+    _run_compute_loss(arch)
 
 
 # ---------------------------------------------------------------------------
