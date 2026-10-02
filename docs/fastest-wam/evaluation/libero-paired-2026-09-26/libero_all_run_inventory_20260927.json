@@ -1,0 +1,232 @@
+{
+  "host": "h100-box",
+  "root": "/root/tengfei/FastestWAM/outputs/libero",
+  "runs": [
+    {
+      "name": "mip4_step30000",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_alpha_mip4_2026-09-22_22-52-53/2026-09-22_22-54-39/checkpoint_step_30000.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 1905,
+        "trials": 2000,
+        "success_rate": 0.9525,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "mip_final_21370",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_alpha_mip_2026-09-18_21-58-14/2026-09-18_22-00-15/checkpoint_step_21370.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 1916,
+        "trials": 2000,
+        "success_rate": 0.958,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "mip_final_21370_smoke",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_alpha_mip_2026-09-18_21-58-14/2026-09-18_22-00-15/checkpoint_step_21370.safetensors",
+      "jobs_count": 1,
+      "summary_overall": {
+        "successes": 1,
+        "trials": 1,
+        "success_rate": 1.0,
+        "tasks_complete": 1,
+        "tasks_expected": 1
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 1
+    },
+    {
+      "name": "mip_final_21370_videos",
+      "manifest": false,
+      "summary": false,
+      "checkpoint": null,
+      "jobs_count": null,
+      "summary_overall": null,
+      "summary_missing_runs": null,
+      "raw_result_files": 0
+    },
+    {
+      "name": "openwam_alpha_foundation_154000_10step",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/assets/openwam_ckpt/openwam_alpha/OpenWAM-Alpha-Pretrain-Foundation-Model/checkpoint_step_154000.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 0,
+        "trials": 2000,
+        "success_rate": 0.0,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "openwam_alpha_sim_libero_10690",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/assets/openwam_ckpt/openwam_alpha/OpenWAM-Alpha-Sim-LIBERO/checkpoint_step_10690.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 1987,
+        "trials": 2000,
+        "success_rate": 0.9935,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "openwam_alpha_sim_libero_10690_2step",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/assets/openwam_ckpt/openwam_alpha/OpenWAM-Alpha-Sim-LIBERO/checkpoint_step_10690.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 1991,
+        "trials": 2000,
+        "success_rate": 0.9955,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "sf_A_fm_step42730_long06_20260926",
+      "manifest": true,
+      "summary": false,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": null,
+      "summary_missing_runs": null,
+      "raw_result_files": 0
+    },
+    {
+      "name": "sf_A_fm_step42730_long06_2step_20260926",
+      "manifest": true,
+      "summary": false,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": null,
+      "summary_missing_runs": null,
+      "raw_result_files": 0
+    },
+    {
+      "name": "sf_C_mip_mixed_step42730_long06_20260926",
+      "manifest": true,
+      "summary": false,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": null,
+      "summary_missing_runs": null,
+      "raw_result_files": 0
+    },
+    {
+      "name": "sf_decision_A_fm_10step_long06_step42730_20260926",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": {
+        "successes": 44,
+        "trials": 50,
+        "success_rate": 0.88,
+        "tasks_complete": 1,
+        "tasks_expected": 1
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 1
+    },
+    {
+      "name": "sf_decision_A_fm_2step_all_suites_step42730_20260927",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+      "jobs_count": 40,
+      "summary_overall": {
+        "successes": 1938,
+        "trials": 2000,
+        "success_rate": 0.969,
+        "tasks_complete": 40,
+        "tasks_expected": 40
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 40
+    },
+    {
+      "name": "sf_decision_A_fm_2step_long06_step42730_20260926",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": {
+        "successes": 48,
+        "trials": 50,
+        "success_rate": 0.96,
+        "tasks_complete": 1,
+        "tasks_expected": 1
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 1
+    },
+    {
+      "name": "sf_decision_C_mip_mixed_long04_step42730_20260927",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": {
+        "successes": 47,
+        "trials": 50,
+        "success_rate": 0.94,
+        "tasks_complete": 1,
+        "tasks_expected": 1
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 1
+    },
+    {
+      "name": "sf_decision_C_mip_mixed_long06_step42730_20260926",
+      "manifest": true,
+      "summary": true,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+      "jobs_count": 1,
+      "summary_overall": {
+        "successes": 41,
+        "trials": 50,
+        "success_rate": 0.82,
+        "tasks_complete": 1,
+        "tasks_expected": 1
+      },
+      "summary_missing_runs": 0,
+      "raw_result_files": 1
+    },
+    {
+      "name": "sf_decision_C_mip_mixed_long_suite_step42730_20260927",
+      "manifest": true,
+      "summary": false,
+      "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+      "jobs_count": 40,
+      "summary_overall": null,
+      "summary_missing_runs": null,
+      "raw_result_files": 1
+    }
+  ]
+}

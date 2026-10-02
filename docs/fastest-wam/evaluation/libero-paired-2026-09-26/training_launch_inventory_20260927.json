@@ -1,0 +1,175 @@
+{
+  "host": "h100-box",
+  "root": "/root/tengfei/FastestWAM/outputs/experiments",
+  "launch_directories": [
+    {
+      "name": "libero_alpha_flow_baseline_2026-09-17_02-25-54",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_baseline_2026-09-17_03-23-45",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_baseline_2026-09-17_09-54-25",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_baseline_2026-09-17_12-43-09",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_debug_2026-09-17_02-25-54",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_debug_2026-09-17_03-23-45",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_debug_2026-09-17_09-54-25",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_flow_debug_2026-09-17_12-43-09",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_alpha_mip4_2026-09-22_22-52-53",
+      "checkpoints": [
+        "2026-09-22_22-54-39/checkpoint_step_30000.safetensors"
+      ],
+      "config_paths": [
+        "2026-09-22_22-54-39/config.yaml",
+        "hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_alpha_mip_2026-09-18_21-58-14",
+      "checkpoints": [
+        "2026-09-18_22-00-15/checkpoint_step_21370.safetensors"
+      ],
+      "config_paths": [
+        "2026-09-18_22-00-15/config.yaml",
+        "hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_b8_probe_2026-09-25_00-43-00",
+      "checkpoints": [],
+      "config_paths": [
+        "2026-09-25_00-45-03/config.yaml",
+        "hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_batch16_probe_2026-09-25_00-37-50",
+      "checkpoints": [],
+      "config_paths": [],
+      "train_logs": []
+    },
+    {
+      "name": "libero_sf_batch16_probe_2026-09-25_00-38-22",
+      "checkpoints": [],
+      "config_paths": [
+        "2026-09-25_00-40-10/config.yaml",
+        "hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_suite_2026-09-25_00-17-50",
+      "checkpoints": [],
+      "config_paths": [
+        "smoke_C_mip_mixed/2026-09-25_00-19-38_debug/config.yaml",
+        "smoke_C_mip_mixed/hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "smoke_C_mip_mixed/hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_suite_2026-09-25_00-20-15",
+      "checkpoints": [],
+      "config_paths": [
+        "smoke_C_mip_mixed/2026-09-25_00-22-05_debug/config.yaml",
+        "smoke_C_mip_mixed/hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "smoke_C_mip_mixed/hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_suite_2026-09-25_00-25-48",
+      "checkpoints": [
+        "smoke_C_mip_mixed/2026-09-25_00-27-37_debug/checkpoint_step_20.safetensors"
+      ],
+      "config_paths": [
+        "smoke_A_fm/hydra/.hydra/config.yaml",
+        "smoke_C_mip_mixed/2026-09-25_00-27-37_debug/config.yaml",
+        "smoke_C_mip_mixed/hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "smoke_A_fm/hydra/train.log",
+        "smoke_C_mip_mixed/hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_suite_2026-09-25_00-48-00",
+      "checkpoints": [
+        "smoke_C_mip_mixed/2026-09-25_00-49-39_debug/checkpoint_step_20.safetensors"
+      ],
+      "config_paths": [
+        "smoke_C_mip_mixed/2026-09-25_00-49-39_debug/config.yaml",
+        "smoke_C_mip_mixed/hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "smoke_C_mip_mixed/hydra/train.log"
+      ]
+    },
+    {
+      "name": "libero_sf_suite_2026-09-25_00-52-16",
+      "checkpoints": [
+        "A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+        "C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors"
+      ],
+      "config_paths": [
+        "A_fm/2026-09-25_00-54-12/config.yaml",
+        "A_fm/hydra/.hydra/config.yaml",
+        "C_mip_mixed/2026-09-25_00-54-11/config.yaml",
+        "C_mip_mixed/hydra/.hydra/config.yaml"
+      ],
+      "train_logs": [
+        "A_fm/hydra/train.log",
+        "C_mip_mixed/hydra/train.log"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+  "created_at": "2026-09-27T06:03:01.180158",
+  "server_mode": "managed",
+  "inference_mode": "sync",
+  "inference_horizon": 10,
+  "denoise_mode": "sync",
+  "denoise_steps": 10,
+  "replicas_per_gpu": 1,
+  "gpus": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "render_gpus": [
+    4,
+    5,
+    7,
+    3
+  ],
+  "render_assignments": [
+    {
+      "policy_gpu": 0,
+      "replica": 0,
+      "render_gpu": 4
+    },
+    {
+      "policy_gpu": 1,
+      "replica": 0,
+      "render_gpu": 5
+    },
+    {
+      "policy_gpu": 2,
+      "replica": 0,
+      "render_gpu": 7
+    },
+    {
+      "policy_gpu": 3,
+      "replica": 0,
+      "render_gpu": 3
+    }
+  ],
+  "client_max_attempts": 3,
+  "client_retry_delay": 2.0,
+  "worker_max_consecutive_failures": 3,
+  "worker_recovery_delay": 30.0,
+  "client_start_stagger": 0.5,
+  "policy_config": "/root/tengfei/FastestWAM/benchmarks/libero/policy_config.yml",
+  "seed_override": null,
+  "effective_seed": 42,
+  "task_sample_ratio": null,
+  "task_sample_seed": 42,
+  "libero_python": "/root/fasteval-libero/envs/libero/bin/python",
+  "libero_path": "/root/fasteval-libero/LIBERO",
+  "mujoco_version": "3.3.2",
+  "scheduler": "dynamic_shared_queue",
+  "resume_signature": {
+    "protocol_version": "openwam-libero-native-action-seed42-settle30-v1",
+    "checkpoint": "/root/tengfei/FastestWAM/outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+    "policy_config_sha256": "d4211e25b46ec5e164b3662f4ed06743bef2be9ca8243f7c41b14e631f1a89cf",
+    "seed_override": null,
+    "effective_seed": 42,
+    "mujoco_version": "3.3.2",
+    "inference_mode": "sync",
+    "inference_horizon": 10,
+    "denoise_mode": "sync",
+    "denoise_steps": 10,
+    "trial_start": 0,
+    "num_trials": 50,
+    "jobs_sha256": "d7b54604ffbbb95bbfad68b8d7531f5ebcf7f2850bec1f1ad31359ed25a27110",
+    "jobs_count": 40,
+    "render_gpus": [
+      4,
+      5,
+      7,
+      3
+    ]
+  },
+  "trial_run": {
+    "trial_start": 0,
+    "num_trials": 50,
+    "trial_stop": 50
+  },
+  "initial_queue": [
+    {
+      "suite": "libero_spatial",
+      "task_id": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 1
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 2
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 3
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 4
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 5
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 6
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 7
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 8
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 9
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 0
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 1
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 2
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 3
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 4
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 5
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 6
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 7
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 8
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 9
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 0
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 1
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 2
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 3
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 4
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 5
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 6
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 7
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 8
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 9
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 1
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 2
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 3
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 4
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 5
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 6
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 7
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 8
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 9
+    }
+  ],
+  "workers": [
+    {
+      "gpu": 0,
+      "gpu_slot": 0,
+      "replica": 0,
+      "port": 8960,
+      "active": true,
+      "jobs": []
+    },
+    {
+      "gpu": 1,
+      "gpu_slot": 1,
+      "replica": 0,
+      "port": 8961,
+      "active": true,
+      "jobs": []
+    },
+    {
+      "gpu": 2,
+      "gpu_slot": 2,
+      "replica": 0,
+      "port": 8962,
+      "active": true,
+      "jobs": []
+    },
+    {
+      "gpu": 3,
+      "gpu_slot": 3,
+      "replica": 0,
+      "port": 8963,
+      "active": true,
+      "jobs": []
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "suite": "libero_object",
+  "task_id": 3,
+  "trials": 50,
+  "a_successes": 39,
+  "c_successes": 50,
+  "a_only_trials": [],
+  "c_only_trials": [
+    1,
+    8,
+    9,
+    17,
+    20,
+    25,
+    29,
+    30,
+    32,
+    46,
+    48
+  ],
+  "both_fail_trials": [],
+  "exact_p_two_sided_descriptive": 0.0009765625,
+  "a_save_videos": false,
+  "c_save_videos": false
+}

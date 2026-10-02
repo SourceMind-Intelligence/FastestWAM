@@ -1,0 +1,82 @@
+{
+  "suite": "libero_spatial",
+  "tasks_complete": 10,
+  "trials": 500,
+  "a_successes": 491,
+  "c_successes": 496,
+  "a_only": 3,
+  "c_only": 8,
+  "mcnemar_exact_two_sided_descriptive": 0.2265625,
+  "task_rows": [
+    {
+      "task_id": 0,
+      "a_successes": 50,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 0
+    },
+    {
+      "task_id": 1,
+      "a_successes": 49,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 1
+    },
+    {
+      "task_id": 2,
+      "a_successes": 50,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 0
+    },
+    {
+      "task_id": 3,
+      "a_successes": 50,
+      "c_successes": 49,
+      "a_only": 1,
+      "c_only": 0
+    },
+    {
+      "task_id": 4,
+      "a_successes": 49,
+      "c_successes": 49,
+      "a_only": 0,
+      "c_only": 0
+    },
+    {
+      "task_id": 5,
+      "a_successes": 48,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 2
+    },
+    {
+      "task_id": 6,
+      "a_successes": 49,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 1
+    },
+    {
+      "task_id": 7,
+      "a_successes": 48,
+      "c_successes": 49,
+      "a_only": 1,
+      "c_only": 2
+    },
+    {
+      "task_id": 8,
+      "a_successes": 49,
+      "c_successes": 49,
+      "a_only": 1,
+      "c_only": 1
+    },
+    {
+      "task_id": 9,
+      "a_successes": 49,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 1
+    }
+  ]
+}

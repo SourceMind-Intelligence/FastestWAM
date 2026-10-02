@@ -1,0 +1,28 @@
+# Transcription of reported facts, not an executable or author-released config.
+source: https://arxiv.org/html/2510.13626
+source_section: Appendix D.4
+policy_family: OpenVLA-OFT
+start_checkpoint:
+  repo: moojink/openvla-7b-oft-finetuned-libero-spatial-object-goal-10
+  revision: 638918f3d1c2e43a39a8a20772bdb8b91835e4b7
+training_dataset:
+  repo: Sylvest/libero_plus_rlds
+  revision: fb0c7029b076030d5d57227229e4f7460def1f7c
+  format: RLDS
+hardware:
+  gpu: A100
+  count: 8
+training:
+  steps_reported: 100000
+  batch_size_per_gpu: 2
+  global_batch_size: 16
+  optimizer: AdamW
+  weight_decay: 0.1
+  learning_rate: 0.0005
+  scheduler: cosine_with_warmup
+  warmup_steps: null  # Not published in the paper or model card.
+result_checkpoint:
+  repo: Sylvest/openvla-7b-oft-finetuned-libero-plus-mixdata
+  revision: a85655ec941bae6644c9fbdf62db02b9726d7cf5
+  released_component_filename_step: 150000  # Conflicts with steps_reported.
+exact_reproduction_status: unresolved

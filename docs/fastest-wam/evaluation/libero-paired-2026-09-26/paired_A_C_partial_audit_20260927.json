@@ -1,0 +1,54 @@
+{
+  "completed_paired_tasks": 6,
+  "all_trial_ids_match": true,
+  "rows": [
+    {
+      "suite": "libero_10",
+      "task_id": 0,
+      "a_successes": 44,
+      "c_successes": 44,
+      "a_only": 5,
+      "c_only": 5
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 0,
+      "a_successes": 50,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 1,
+      "a_successes": 49,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 1
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 2,
+      "a_successes": 50,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 3,
+      "a_successes": 50,
+      "c_successes": 49,
+      "a_only": 1,
+      "c_only": 0
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 5,
+      "a_successes": 48,
+      "c_successes": 50,
+      "a_only": 0,
+      "c_only": 2
+    }
+  ]
+}

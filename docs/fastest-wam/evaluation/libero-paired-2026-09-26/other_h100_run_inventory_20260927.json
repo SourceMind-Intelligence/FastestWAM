@@ -1,0 +1,520 @@
+{
+  "scan_date": "2026-09-27",
+  "scope": [
+    "Evan outputs dated launches and saved checkpoints",
+    "Evan Fast-WAM readout runs",
+    "fasteval-libero runs",
+    "openwam-eval logs"
+  ],
+  "evan_training_launches": [
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-17/14-54-14",
+      "train_log": true,
+      "log_lines": 1,
+      "last_line": "[2026-09-17 14:54:20,712][__main__][INFO] - mixed_precision = bf16 (from cfg.training.mixed_precision)"
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-17/14-59-01",
+      "train_log": true,
+      "log_lines": 113,
+      "last_line": "[2026-09-17 15:02:21,356][openwam.train.utils.checkpointing][INFO] - [checkpoint] Saved final: outputs/openwam_checkpoints/2026-09-17_14-59-57_debug/checkpoint_step_20.safetensors"
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-17/15-03-00",
+      "train_log": true,
+      "log_lines": 87,
+      "last_line": "[2026-09-17 15:04:06,401][openwam.train.utils.training_utils][INFO] - wandb initialized: openwam/None"
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-17/15-31-22",
+      "train_log": true,
+      "log_lines": 133,
+      "last_line": "[2026-09-18 05:55:41,381][openwam.train.utils.checkpointing][INFO] - Removed old checkpoint: outputs/openwam_checkpoints/2026-09-17_15-32-18/checkpoint_step_22000.safetensors"
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-18/06-18-55",
+      "train_log": false,
+      "log_lines": 0,
+      "last_line": null
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-18/06-21-55",
+      "train_log": true,
+      "log_lines": 98,
+      "last_line": "[2026-09-18 06:23:06,286][openwam.train.utils.training_utils][INFO] - wandb initialized: openwam/robotwin2.0-full-8gpu"
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/2026-09-18/13-51-04",
+      "train_log": true,
+      "log_lines": 98,
+      "last_line": "[2026-09-18 13:52:14,750][openwam.train.utils.training_utils][INFO] - wandb initialized: openwam/robotwin2.0-full-8gpu-retry1"
+    }
+  ],
+  "evan_checkpoint_dirs": [
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/2026-09-17_14-59-57_debug",
+      "checkpoints": [
+        {
+          "name": "checkpoint_step_20.safetensors",
+          "bytes": 24813767464
+        }
+      ],
+      "has_config": true
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/2026-09-17_15-03-54",
+      "checkpoints": [],
+      "has_config": true
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/2026-09-17_15-32-18",
+      "checkpoints": [
+        {
+          "name": "checkpoint_step_24000.safetensors",
+          "bytes": 24813767464
+        }
+      ],
+      "has_config": true
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/pilot_step10000",
+      "checkpoints": [
+        {
+          "name": "checkpoint_step_10000.safetensors",
+          "bytes": 24813767464
+        }
+      ],
+      "has_config": true
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/pilot_step4000",
+      "checkpoints": [
+        {
+          "name": "checkpoint_step_4000.safetensors",
+          "bytes": 24813767464
+        }
+      ],
+      "has_config": true
+    },
+    {
+      "path": "/root/evan/Fastest-WAM-evan/outputs/openwam_checkpoints/robotwin2.0",
+      "checkpoints": [],
+      "has_config": false
+    }
+  ],
+  "fastwam_readout_runs": [
+    {
+      "run_id": "libero_all40_half0_all_5trial_20260927",
+      "has_summary": true,
+      "trials": 100,
+      "successes": 97,
+      "tasks": 20,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_all40_half0_drop29_5trial_20260927",
+      "has_summary": true,
+      "trials": 100,
+      "successes": 93,
+      "tasks": 20,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_all40_half1_all_5trial_20260927",
+      "has_summary": true,
+      "trials": 100,
+      "successes": 98,
+      "tasks": 20,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_all40_half1_drop29_5trial_20260927",
+      "has_summary": true,
+      "trials": 100,
+      "successes": 92,
+      "tasks": 20,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_goal09_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 45,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_goal09_drop27_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 42,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_goal09_drop28_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 36,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_goal09_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 38,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long03_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 48,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long03_drop27_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 49,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long03_drop28_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 34,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long03_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 37,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 43,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_drop0_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 46,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_drop15_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 41,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_drop27_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 45,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_drop28_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 34,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long04_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 21,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_all_1trial_20260927",
+      "has_summary": true,
+      "trials": 1,
+      "successes": 1,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 40,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_all_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 4,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop0_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 42,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop0_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 5,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop15_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 43,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop15_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 4,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 37,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_drop29_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 4,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_none_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 0,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_single0_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 0,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_single15_1trial_20260927",
+      "has_summary": true,
+      "trials": 1,
+      "successes": 0,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_single15_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 0,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_long06_single29_5trial_20260927",
+      "has_summary": true,
+      "trials": 5,
+      "successes": 0,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_object03_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 50,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_object03_drop28_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 50,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_object03_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 40,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_screen5_all_5trial_20260927",
+      "has_summary": true,
+      "trials": 25,
+      "successes": 24,
+      "tasks": 5,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_screen5_drop0_5trial_20260927",
+      "has_summary": true,
+      "trials": 25,
+      "successes": 25,
+      "tasks": 5,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_screen5_drop15_5trial_20260927",
+      "has_summary": true,
+      "trials": 25,
+      "successes": 24,
+      "tasks": 5,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_screen5_drop29_5trial_20260927",
+      "has_summary": true,
+      "trials": 25,
+      "successes": 22,
+      "tasks": 5,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_spatial05_all_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 50,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_spatial05_drop28_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 49,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "libero_spatial05_drop29_50trial_20260927",
+      "has_summary": true,
+      "trials": 50,
+      "successes": 50,
+      "tasks": 1,
+      "checkpoint": "/root/evan/Fastest-WAM-evan/assets/fastwam_official/libero_uncond_2cam224.pt"
+    },
+    {
+      "run_id": "manager_preflight_20260927",
+      "has_summary": false
+    },
+    {
+      "run_id": "tasklist_preflight_20260927",
+      "has_summary": false
+    }
+  ],
+  "fasteval_libero_runs": [
+    {
+      "run_id": "ref_quick_lowmem_gpu47",
+      "has_summary": true,
+      "overall": {
+        "successes": 80,
+        "trials": 80,
+        "success_rate": 1.0,
+        "ci95": [
+          0.954180263735425,
+          1.0
+        ]
+      },
+      "failed_jobs": 0,
+      "profile": "quick",
+      "checkpoint": "/root/fasteval-libero/checkpoints/OpenWAM-Alpha-Sim-LIBERO/checkpoint_step_10690.safetensors"
+    },
+    {
+      "run_id": "ref_quick_lowmem_gpu67",
+      "has_summary": false
+    },
+    {
+      "run_id": "ref_smoke_gpu7",
+      "has_summary": false
+    },
+    {
+      "run_id": "ref_smoke_gpu7_lowmem",
+      "has_summary": false
+    },
+    {
+      "run_id": "ref_smoke_gpu7_lowmem2",
+      "has_summary": true,
+      "overall": {
+        "successes": 1,
+        "trials": 1,
+        "success_rate": 1.0,
+        "ci95": [
+          0.20654329147389294,
+          1.0
+        ]
+      },
+      "failed_jobs": 0,
+      "profile": "smoke",
+      "checkpoint": "/root/fasteval-libero/checkpoints/OpenWAM-Alpha-Sim-LIBERO/checkpoint_step_10690.safetensors"
+    }
+  ],
+  "openwam_eval_log_files": [
+    "debug-client.log",
+    "download.log",
+    "download.pid",
+    "pdl.log",
+    "ppush-checkpoint_step_10000.safetensors.log",
+    "ppush-checkpoint_step_4000.safetensors.log",
+    "ppush.nohup",
+    "ppush10k.nohup",
+    "push-pilot4000.log",
+    "server-19100.092652.log",
+    "server-19100.110144.log",
+    "server-19100.log",
+    "server-19100.pid",
+    "server-19101.140106.log",
+    "setup.log",
+    "supervisor-19101.log",
+    "supervisor-19101.pid",
+    "supervisor-19101.stop",
+    "supervisor.log",
+    "supervisor.pid",
+    "supervisor.stop"
+  ]
+}
