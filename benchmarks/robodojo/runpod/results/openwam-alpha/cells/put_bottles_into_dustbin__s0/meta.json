@@ -1,0 +1,31 @@
+{
+ "cell": "put_bottles_into_dustbin__s0",
+ "task": "put_bottles_into_dustbin",
+ "seed": 0,
+ "run_id": "fwbase_s0",
+ "out": "/root/fwbase",
+ "pod_id": "xioj1txq2p27jh",
+ "hostname": "9e8f0cc4ac99",
+ "gpu": "NVIDIA L40S, 580.159.04, 46068 MiB",
+ "robodojo_head": "ee67a1468510da7624a089164402359f2afc72c8",
+ "robodojo_dirty": "M XPolicyLab",
+ "xpolicylab_head": "fa431ecd893ee706883e64fe5fe1464ec8cd928d",
+ "xpolicylab_dirty": "",
+ "deploy_yml": "policy_name: OpenWAM\nprotocol: ws\n# True batch inference: the Isaac client runs num_envs (sim_config.yml, default\n# 10) parallel envs; get_action_batch stacks every running env into ONE\n# engine.generate_batch forward pass.\neval_batch: true\n\n# Server transport: overridden by setup_eval_policy_server.sh per launch.\nport: null\nhost: localhost\n\n# Identifiers + per-launch wiring (set via --overrides from the eval scripts).\nbench_name: null\ntask_name: null\nckpt_name: null\nenv_cfg_type: null\naction_type: ee\naction_dim: null\nseed: 42\ngpu_id: null\n\n# --- OpenWAM-specific keys (resolved in setup_eval_policy_server.sh) ---\n# OpenWAM source root. null -> the vendored copy at policy/OpenWAM/OpenWAM/.\nopenwam_root: null\n# Checkpoint dir containing config.yaml + checkpoint_step_*.safetensors\n# + normalization_stats.npy (+ tokenizer/). null -> XPolicyLab checkpoints/\n# resolution (explicit path, 5-tuple run dir, or checkpoints/<ckpt_name>).\nckpt_dir: null\n# OpenWAM deploy hyperparameters yaml. null -> <openwam_root>/configs/deploy.yaml;\n# model.py force-overrides dit_cache/compile/decode_video off + sync regardless.\nopenwam_deploy_config: null\ndevice: cuda\n\n# Actions executed per generated chunk before the client requests a new one.\n# null -> OpenWAM inference.inference_horizon (null there = full 32-step chunk).\nreplan_steps: null\ndefault_instruction: follow the instruction\n# true skips checkpoint loading and returns hold-position chunks (protocol\n# debugging only; never valid for a real evaluation).\nallow_dummy_policy: false\n",
+ "sim_config": "decimation: 1\ndt: 0.004\nrender_interval: 10\nscene:\n  num_envs: 10\n  env_spacing: 7\n",
+ "ckpt_dir": "/workspace/oeh-campaign/checkpoints/OpenWAM-Alpha-Sim-RoboDojo",
+ "ckpt_files": {
+  "checkpoint_step_60000.safetensors": 24813767464,
+  "config.yaml": 3395,
+  "normalization_stats.npy": 2190
+ },
+ "ckpt_observed": "{\n  \"checkpoint_sha256\": \"94b18625cd99b9791a0896cfd82aa05ae9a594cef56a55c81e6af7d1fea9582c\",\n  \"files_sha256\": {\n    \"checkpoint_step_60000.safetensors\": \"78ca4ef5d2f6c8fa877bcae8b40c36b3d8700547fd5a708b472c4564e5f40abb\",\n    \"config.yaml\": \"8b05f4365dc020daf07c9fce1f61b653a7f6d16053baf1e7238b7b48403c67ca\",\n    \"normalization_stats.npy\": \"48bc266e0390f341c86dc3712501788c2bfdb75e44f005e41cc3e5820ace36a3\",\n    \"tokenizer/google/umt5-xxl/special_tokens_map.json\": \"7b8a9f5040adb67b5805abdfd42c1f8d0f3d0e711f10726580eb3789cd0ad61d\",\n    \"tokenizer/google/umt5-xxl/spiece.model\": \"e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458\",\n    \"tokenizer/google/umt5-xxl/tokenizer.json\": \"6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602b\",\n    \"tokenizer/google/umt5-xxl/tokenizer_config.json\": \"ed9a3a8b0faa71a70a32847e0435fe036e6e112d4df4edb7bb48a921e344dc05\"\n  },\n  \"local_dir\": \"/workspace/oeh-campaign/checkpoints/OpenWAM-Alpha-Sim-RoboDojo\",\n  \"normalization_sha256\": \"48bc266e0390f341c86dc3712501788c2bfdb75e44f005e41cc3e5820ace36a3\",\n  \"repo\": \"OpenWAM/OpenWAM-Alpha-Sim-RoboDojo\",\n  \"revision\": \"2c1302294e3ba8319bbdb2c803b7a27de9292d03\"\n}\n",
+ "started": "2026-10-02T03:32:08Z",
+ "runner_exit": 0,
+ "wall_seconds": 4005,
+ "result_json": "/root/fwbase/eval_result/RoboDojo/put_bottles_into_dustbin/OpenWAM/arx_x5/0_ckpt_name=OpenWAM-Alpha-Sim-RoboDojo,action_type=ee/fwbase_s0_put_bottles_into_dustbin/_result.json",
+ "peak_gpu_mib": 39901,
+ "success_rate": 0.96,
+ "score": 96.8,
+ "eval_time": 50
+}
