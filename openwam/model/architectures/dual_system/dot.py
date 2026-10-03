@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 import time
 from typing import Optional, Tuple
 
@@ -34,6 +35,7 @@ from torch import Tensor
 
 from openwam.model.action_backbone.components import RMSNorm
 from openwam.model.action_backbone.mip import (
+    MIP_REFINE_PRED_WEIGHT,
     mip_action_timesteps,
     mip_branch_input,
     mip_refine_anchor,
@@ -52,6 +54,17 @@ from openwam.model.video_backbone.wan.models.dit import rope_apply
 logger = logging.getLogger(__name__)
 
 _REQUIRED_VIDEO_MASK_MODE = "first_frame_causal"
+
+# What the second MIP pass sees, at inference, on the action dims a dataset leaves
+# unused (the padding of the unified action space). Their target is always 0 and the
+# loss skips them, so the first pass's output there is never trained, yet training
+# feeds the second pass the anchor ``(1 - w) * 0 + w * pred0`` on them (``w`` from
+# ``mip_refine_mode``: 0.5 for ``mixed``). Modes:
+#   zero    zero them before the second pass (the original inference)
+#   anchor  ``w * pred0``, the anchor training used (zero for ``gt``)
+#   keep    ``pred0`` unchanged
+MIP_UNUSED_DIMS_ENV = "OPENWAM_DOT_MIP_UNUSED_DIMS"
+MIP_UNUSED_DIMS_MODES = ("zero", "anchor", "keep")
 
 
 def _attention(q: Tensor, k: Tensor, v: Tensor, attn_mask: Optional[Tensor], num_heads: int) -> Tensor:
@@ -566,7 +579,7 @@ class DualSystemDoTArchitecture(BaseWAMArchitecture):
         pred0 = self._predict_actions(zeros, a_t0, fused_k, fused_v, context=context, context_mask=context_mask)
         if inactive_action_dims is not None:
             pred0 = pred0.clone()
-            pred0[..., inactive_action_dims] = 0
+            pred0[..., inactive_action_dims] = self._mip_unused_dims_weight() * pred0[..., inactive_action_dims]
         pred1 = self._predict_actions(
             mip_branch_input(pred0, t_star, noise=None),
             a_t1,
@@ -579,6 +592,17 @@ class DualSystemDoTArchitecture(BaseWAMArchitecture):
             pred1 = pred1.clone()
             pred1[..., inactive_action_dims] = 0
         return pred1
+
+    def _mip_unused_dims_weight(self) -> float:
+        """Scale on the first pass's unused-dim output in the second pass's input; see MIP_UNUSED_DIMS_ENV."""
+        mode = os.environ.get(MIP_UNUSED_DIMS_ENV, "zero").strip().lower()
+        if mode not in MIP_UNUSED_DIMS_MODES:
+            raise ValueError(f"{MIP_UNUSED_DIMS_ENV} must be one of {MIP_UNUSED_DIMS_MODES}, got {mode!r}")
+        weight = {"zero": 0.0, "anchor": MIP_REFINE_PRED_WEIGHT[self._mip_refine_mode], "keep": 1.0}[mode]
+        if getattr(self, "_mip_unused_dims_logged", None) != mode:
+            logger.info("DoT MIP inference: unused action dims enter the second pass as %s (scale %.2f).", mode, weight)
+            self._mip_unused_dims_logged = mode
+        return weight
 
     def _dot_flow_actions(
         self, schedule, action_num_frames, seed, fused_k, fused_v, context, context_mask, inactive_action_dims

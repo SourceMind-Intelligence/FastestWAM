@@ -531,6 +531,43 @@ def test_dot_mip_generate_is_two_head_passes_from_zeros():
     assert torch.allclose(torch.from_numpy(out["actions"]), head[1]["pred"][0])
 
 
+@pytest.mark.parametrize(
+    ("mode", "refine_mode", "scale"),
+    [
+        (None, "mixed", 0.0),
+        ("zero", "mixed", 0.0),
+        ("anchor", "mixed", 0.5),
+        ("anchor", "gt", 0.0),
+        ("keep", "mixed", 1.0),
+    ],
+)
+def test_dot_mip_generate_feeds_unused_dims_to_the_second_pass_by_mode(monkeypatch, mode, refine_mode, scale):
+    if mode is None:
+        monkeypatch.delenv("OPENWAM_DOT_MIP_UNUSED_DIMS", raising=False)
+    else:
+        monkeypatch.setenv("OPENWAM_DOT_MIP_UNUSED_DIMS", mode)
+    torch.manual_seed(0)
+    arch = _make_dot_arch(action_objective="mip", mip_refine_mode=refine_mode)
+    _attach_inference_inputs(arch)
+    head = _spy_head(arch)
+    active = torch.tensor([True, True, True, True, False, False, False])
+    out = _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)], active_action_mask=active)
+
+    pred0 = head[0]["pred"]
+    assert torch.allclose(head[1]["input"][..., active], MIP_T_STAR * pred0[..., active])
+    assert torch.allclose(head[1]["input"][..., ~active], MIP_T_STAR * scale * pred0[..., ~active])
+    assert pred0[..., ~active].abs().min() > 0
+    assert torch.all(torch.from_numpy(out["actions"])[:, ~active] == 0)
+
+
+def test_dot_mip_generate_rejects_an_unknown_unused_dims_mode(monkeypatch):
+    monkeypatch.setenv("OPENWAM_DOT_MIP_UNUSED_DIMS", "half")
+    arch = _make_dot_arch(action_objective="mip")
+    _attach_inference_inputs(arch)
+    with pytest.raises(ValueError, match="OPENWAM_DOT_MIP_UNUSED_DIMS"):
+        _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)], active_action_mask=torch.tensor([True] * 4 + [False] * 3))
+
+
 def test_dot_generate_rejects_classifier_free_guidance():
     arch = _make_dot_arch()
     _attach_inference_inputs(arch)
