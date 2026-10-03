@@ -118,6 +118,31 @@ def _make_env_with_randomization_retries(task, cfg: dict, max_attempts: int = 5)
     raise AssertionError("unreachable")
 
 
+def _recorder_for_trial(suite: str, task_id: int, trial: int):
+    """The trial's recorder when OPENWAM_LIBERO_RECORD_DIR is set (diagnostic runs only), else None."""
+    if not os.environ.get("OPENWAM_LIBERO_RECORD_DIR", "").strip():
+        return None
+    from episode_recorder import EpisodeRecorder  # next to this file; imported only when recording
+
+    return EpisodeRecorder.from_env(suite, task_id, trial)
+
+
+def _save_recording(recorder, result: dict, suite: str, task_id: int, instruction: str) -> None:
+    # A diagnostic recording must never fail the evaluation itself.
+    try:
+        path = recorder.save(
+            suite=suite,
+            task_id=task_id,
+            trial=result["trial"],
+            instruction=instruction,
+            success=result["success"],
+            policy_steps=result["policy_steps"],
+        )
+        print(f"[RECORD] trial={result['trial']} path={path}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[RECORD] trial={result['trial']} failed: {exc!r}", flush=True)
+
+
 def run_eval(cfg: dict) -> int:
     if str(cfg.get("action_mode", "")).strip().lower() != "eef":
         raise ValueError("LIBERO runner requires action_mode: eef")
@@ -172,6 +197,7 @@ def run_eval(cfg: dict) -> int:
             if reseed_each_trial:
                 env.seed(seed + trial)
             result = {"trial": trial, "success": False, "policy_steps": 0}
+            recorder = _recorder_for_trial(suite_name, task_id, trial)
             try:
                 obs = env.reset()
                 if len(init_states) > 0:
@@ -179,9 +205,14 @@ def run_eval(cfg: dict) -> int:
                 for _ in range(settle_steps):
                     obs, _, _, _ = env.step(settle_action)
                 policy.reset()
+                if recorder is not None:
+                    recorder.observe(obs)
                 done = False
                 for step in range(max_steps):
-                    obs, reward, done, _ = env.step(policy.act(obs, task.language))
+                    action = policy.act(obs, task.language)
+                    obs, reward, done, _ = env.step(action)
+                    if recorder is not None:
+                        recorder.observe(obs, action)
                     result["policy_steps"] = step + 1
                     result["last_reward"] = float(reward)
                     if done:
@@ -190,6 +221,8 @@ def run_eval(cfg: dict) -> int:
                         break
             finally:
                 trial_results.append(result)
+                if recorder is not None:
+                    _save_recording(recorder, result, suite_name, task_id, task.language)
             print(
                 f"[RESULT] trial={trial} success={result['success']} steps={result['policy_steps']}",
                 flush=True,

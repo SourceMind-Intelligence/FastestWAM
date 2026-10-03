@@ -22,6 +22,7 @@ training step costs about one flow-matching step instead of two joint forwards.
 from __future__ import annotations
 
 import copy
+import json
 import logging
 import os
 import time
@@ -66,6 +67,15 @@ _REQUIRED_VIDEO_MASK_MODE = "first_frame_causal"
 MIP_UNUSED_DIMS_ENV = "OPENWAM_DOT_MIP_UNUSED_DIMS"
 MIP_UNUSED_DIMS_MODES = ("zero", "anchor", "keep")
 MIP_UNUSED_DIMS_DEFAULT = "anchor"
+
+# Diagnostics for DoT MIP inference, both off by default (added 2026-10-03 to find where
+# the 1-layer MIP head loses to flow matching on a few LIBERO tasks):
+#   OPENWAM_DOT_MIP_PASSES     "2" runs both passes (MIP); "1" returns the first pass alone
+#   OPENWAM_DOT_MIP_TRACE_DIR  appends one JSON line per inference call to
+#                              <dir>/dot_mip_trace_<pid>.jsonl: the RMS of each pass and of
+#                              their difference on the used action dims, per dim and per step
+MIP_PASSES_ENV = "OPENWAM_DOT_MIP_PASSES"
+MIP_TRACE_DIR_ENV = "OPENWAM_DOT_MIP_TRACE_DIR"
 
 
 def _attention(q: Tensor, k: Tensor, v: Tensor, attn_mask: Optional[Tensor], num_heads: int) -> Tensor:
@@ -578,21 +588,65 @@ class DualSystemDoTArchitecture(BaseWAMArchitecture):
         a_t1 = mip_action_timesteps(t_star, 1, device=device, dtype=dtype, num_train_timesteps=num_ts)
         zeros = torch.zeros(1, action_num_frames - 1, self.action_dim, device=device, dtype=dtype)
         pred0 = self._predict_actions(zeros, a_t0, fused_k, fused_v, context=context, context_mask=context_mask)
+        pred1 = None
+        if self._mip_inference_passes() == 2:
+            refine_from = pred0
+            if inactive_action_dims is not None:
+                refine_from = pred0.clone()
+                refine_from[..., inactive_action_dims] = (
+                    self._mip_unused_dims_weight() * pred0[..., inactive_action_dims]
+                )
+            pred1 = self._predict_actions(
+                mip_branch_input(refine_from, t_star, noise=None),
+                a_t1,
+                fused_k,
+                fused_v,
+                context=context,
+                context_mask=context_mask,
+            )
+        self._maybe_trace_mip(pred0, pred1, inactive_action_dims)
+        actions = pred0 if pred1 is None else pred1
         if inactive_action_dims is not None:
-            pred0 = pred0.clone()
-            pred0[..., inactive_action_dims] = self._mip_unused_dims_weight() * pred0[..., inactive_action_dims]
-        pred1 = self._predict_actions(
-            mip_branch_input(pred0, t_star, noise=None),
-            a_t1,
-            fused_k,
-            fused_v,
-            context=context,
-            context_mask=context_mask,
-        )
+            actions = actions.clone()
+            actions[..., inactive_action_dims] = 0
+        return actions
+
+    def _mip_inference_passes(self) -> int:
+        """Head passes at inference: 2 (MIP), or 1 to return the first pass alone; see MIP_PASSES_ENV."""
+        value = os.environ.get(MIP_PASSES_ENV, "2").strip()
+        if value not in ("1", "2"):
+            raise ValueError(f"{MIP_PASSES_ENV} must be 1 or 2, got {value!r}")
+        passes = int(value)
+        if getattr(self, "_mip_passes_logged", None) != passes:
+            logger.info("DoT MIP inference: %d head pass(es).", passes)
+            self._mip_passes_logged = passes
+        return passes
+
+    def _maybe_trace_mip(self, pred0: Tensor, pred1: Optional[Tensor], inactive_action_dims) -> None:
+        """Append both passes' RMS on the used action dims to MIP_TRACE_DIR_ENV, when it is set."""
+        trace_dir = os.environ.get(MIP_TRACE_DIR_ENV, "").strip()
+        if not trace_dir:
+            return
+        used = torch.ones(pred0.shape[-1], dtype=torch.bool, device=pred0.device)
         if inactive_action_dims is not None:
-            pred1 = pred1.clone()
-            pred1[..., inactive_action_dims] = 0
-        return pred1
+            used &= ~inactive_action_dims.to(device=pred0.device, dtype=torch.bool)
+
+        def rms(x: Tensor, over: tuple) -> list:
+            return x[..., used].float().pow(2).mean(dim=over).sqrt().tolist()
+
+        record = {
+            "time": round(time.time(), 3),
+            "used_dims": used.nonzero().flatten().tolist(),
+            "pred0_rms_by_dim": rms(pred0, (0, 1)),
+        }
+        if pred1 is not None:
+            record["pred1_rms_by_dim"] = rms(pred1, (0, 1))
+            record["delta_rms_by_dim"] = rms(pred1 - pred0, (0, 1))
+            record["delta_rms_by_step"] = rms(pred1 - pred0, (0, 2))
+        os.makedirs(trace_dir, exist_ok=True)
+        path = os.path.join(trace_dir, f"dot_mip_trace_{os.getpid()}.jsonl")
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
 
     def _mip_unused_dims_weight(self) -> float:
         """Scale on the first pass's unused-dim output in the second pass's input; see MIP_UNUSED_DIMS_ENV."""

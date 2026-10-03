@@ -7,6 +7,8 @@ head's video inputs can be compared between training and inference.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 import torch
 import torch.nn as nn
@@ -567,6 +569,63 @@ def test_dot_mip_generate_rejects_an_unknown_unused_dims_mode(monkeypatch):
     _attach_inference_inputs(arch)
     with pytest.raises(ValueError, match="OPENWAM_DOT_MIP_UNUSED_DIMS"):
         _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)], active_action_mask=torch.tensor([True] * 4 + [False] * 3))
+
+
+def test_dot_mip_generate_can_return_the_first_pass_alone(monkeypatch):
+    monkeypatch.setenv("OPENWAM_DOT_MIP_PASSES", "1")
+    torch.manual_seed(0)
+    arch = _make_dot_arch(action_objective="mip")
+    _attach_inference_inputs(arch)
+    head = _spy_head(arch)
+    active = torch.tensor([True, True, True, True, False, False, False])
+    out = torch.from_numpy(_generate(arch, [(1000.0, 1000.0), (0.0, 0.0)], active_action_mask=active)["actions"])
+
+    assert len(head) == 1
+    assert torch.equal(head[0]["input"], torch.zeros(1, 8, ACTION_DIM))
+    assert torch.allclose(out[:, active], head[0]["pred"][0][:, active])
+    assert torch.all(out[:, ~active] == 0)
+
+
+def test_dot_mip_generate_rejects_an_unknown_pass_count(monkeypatch):
+    monkeypatch.setenv("OPENWAM_DOT_MIP_PASSES", "3")
+    arch = _make_dot_arch(action_objective="mip")
+    _attach_inference_inputs(arch)
+    with pytest.raises(ValueError, match="OPENWAM_DOT_MIP_PASSES"):
+        _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)])
+
+
+@pytest.mark.parametrize("passes", ["1", "2"])
+def test_dot_mip_trace_records_both_passes_on_the_used_dims(monkeypatch, tmp_path, passes):
+    monkeypatch.setenv("OPENWAM_DOT_MIP_PASSES", passes)
+    monkeypatch.setenv("OPENWAM_DOT_MIP_TRACE_DIR", str(tmp_path))
+    torch.manual_seed(0)
+    arch = _make_dot_arch(action_objective="mip")
+    _attach_inference_inputs(arch)
+    head = _spy_head(arch)
+    active = torch.tensor([True, True, True, True, False, False, False])
+    _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)], active_action_mask=active)
+
+    (trace,) = tmp_path.glob("dot_mip_trace_*.jsonl")
+    (record,) = [json.loads(line) for line in trace.read_text().splitlines()]
+    pred0 = head[0]["pred"][..., active].float()
+    assert record["used_dims"] == [0, 1, 2, 3]
+    assert record["pred0_rms_by_dim"] == pytest.approx(pred0.pow(2).mean(dim=(0, 1)).sqrt().tolist(), rel=1e-5)
+    if passes == "1":
+        assert "delta_rms_by_dim" not in record
+        return
+    delta = head[1]["pred"][..., active].float() - pred0
+    assert record["delta_rms_by_dim"] == pytest.approx(delta.pow(2).mean(dim=(0, 1)).sqrt().tolist(), rel=1e-5)
+    assert record["delta_rms_by_step"] == pytest.approx(delta.pow(2).mean(dim=(0, 2)).sqrt().tolist(), rel=1e-5)
+    assert len(record["pred1_rms_by_dim"]) == 4
+
+
+def test_dot_mip_generate_writes_no_trace_by_default(monkeypatch, tmp_path):
+    monkeypatch.delenv("OPENWAM_DOT_MIP_TRACE_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    arch = _make_dot_arch(action_objective="mip")
+    _attach_inference_inputs(arch)
+    _generate(arch, [(1000.0, 1000.0), (0.0, 0.0)])
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_dot_generate_rejects_classifier_free_guidance():
