@@ -10,6 +10,8 @@
 #   train_l1, train_l2                      L1 and L2 side by side, 5 epochs each
 #   eval_l1_fm10, eval_l2_mip, eval_l1_fm2  full LIBERO on the final L1 and L2 weights, all 8 GPUs
 #   train_r1, train_r3, train_r4, train_r5  one after another, once alpha is in the tree
+#   train_l1e10, eval_l1e10_fm2             L1 for 10 epochs on all 8 GPUs, then its full LIBERO eval
+#                                           (added 2026-10-03: L1 landed 32/2000 below A)
 # Alpha is ALPHA_CKPT, else the path written to logs/phase1-20261002/alpha_ckpt.txt; the R stages wait for it.
 # L_LR and L_EXTRA_ARGS reach only the LIBERO launcher, R_LR and R_EXTRA_ARGS only the RoboDojo one.
 # A failed smoke or training stage stops the queue; a failed eval is logged and the queue moves on.
@@ -224,6 +226,14 @@ main() {
     train_arm "$robodojo_sh" "$arm" "robodojo_alpha_${arm}_20261002" || stop "train_$arm failed, see robodojo_alpha_${arm}_20261002.log"
     mark_done "train_$arm"
   done
+
+  # The plan's follow-up for an L1 more than 20/2000 below A. Eight GPUs keep the global batch at 128.
+  if ! is_done train_l1e10; then
+    gate train_l1e10
+    GPUS=0,1,2,3,4,5,6,7 train_arm "$libero_sh" l1e10 libero_dot_l1e10_20261002 || stop "train_l1e10 failed, see libero_dot_l1e10_20261002.log"
+    mark_done train_l1e10
+  fi
+  if have_eval; then eval_stage eval_l1e10_fm2 libero_dot_l1e10_20261002 l1e10_fm2 2; fi
   status "QUEUE DONE"
 }
 
