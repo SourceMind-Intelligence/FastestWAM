@@ -37,6 +37,51 @@ def _cfg_select(cfg, path: str, default):
     return node
 
 
+class FrameHistory:
+    """Past frames for a history (memory) checkpoint, sampled the way training reads them.
+
+    The training reader (``openwam/dataloader/robodojo.py``) conditions the window
+    starting at frame ``t`` on frames ``max(t - k * stride, 0)`` for
+    ``k = num_frames .. 1``, oldest first, with the oldest slot pinned to frame 0
+    when ``include_first_frame`` is set. Deploy reproduces that with one
+    :meth:`push` per environment step: before ``k * stride`` steps have passed a
+    slot holds the episode's first frame (the reader's clamp), and the pinned slot
+    keeps the first frame after the bounded buffer has dropped it.
+    """
+
+    def __init__(self, num_frames: int, stride: int, include_first_frame: bool = False):
+        self.num_frames = int(num_frames)
+        self.stride = int(stride)
+        self.include_first_frame = bool(include_first_frame)
+        self._frames = deque(maxlen=self.num_frames * self.stride + 1)
+        self._first_frame = None
+
+    @classmethod
+    def from_cfg(cls, cfg) -> "FrameHistory":
+        """The contract a checkpoint was trained with (``dataloader.history_*``); 0 frames = off."""
+        return cls(
+            int(_cfg_select(cfg, "dataloader.history_num_frames", 0) or 0),
+            int(_cfg_select(cfg, "dataloader.history_stride", 25) or 25),
+            bool(_cfg_select(cfg, "dataloader.history_include_first_frame", False)),
+        )
+
+    def push(self, img) -> list:
+        """Record this step's frame and return the past ones, oldest first."""
+        if self._first_frame is None:
+            self._first_frame = img
+        self._frames.append(img)
+        newest = len(self._frames) - 1
+        frames = [self._frames[max(newest - k * self.stride, 0)] for k in range(self.num_frames, 0, -1)]
+        if self.include_first_frame:
+            frames[0] = self._first_frame
+        return frames
+
+    def clear(self):
+        """Forget the episode (call between episodes)."""
+        self._frames.clear()
+        self._first_frame = None
+
+
 class WAMPolicy:
     """Unified policy facade over the sync / async execution mechanisms.
 
@@ -53,11 +98,7 @@ class WAMPolicy:
 
         # History (memory) contract comes from the CKPT's dataloader config, so
         # deploy samples past frames exactly as training did; 0 frames = off.
-        self._history_num_frames = int(_cfg_select(cfg, "dataloader.history_num_frames", 0) or 0)
-        self._history_stride = int(_cfg_select(cfg, "dataloader.history_stride", 25) or 25)
-        self._history_include_first_frame = bool(_cfg_select(cfg, "dataloader.history_include_first_frame", False))
-        self._frames = deque(maxlen=self._history_num_frames * self._history_stride + 1)
-        self._first_frame = None
+        self._history = FrameHistory.from_cfg(cfg)
 
         self._execution_config = normalize_execution_config(execution_config)
         self._async = self._execution_config.enabled
@@ -83,7 +124,13 @@ class WAMPolicy:
         values between the two legal commands. Threshold 0.5 preserves the
         downstream command contract for the WS server and direct consumers.
         """
-        action = self._executor.predict_action(self._build_conditions(obs))
+        return self._project_binary_dims(self._executor.predict_action(self._build_conditions(obs)))
+
+    def _project_binary_dims(self, action) -> np.ndarray:
+        """Final legality projection for two-point command dims (see predict_action).
+
+        Works on a single action or any stack of them (the last axis is the action width).
+        """
         dims = getattr(getattr(self.engine, "architecture", None), "binary_command_dims", ()) or ()
         if dims:
             action = np.array(action)
@@ -99,8 +146,7 @@ class WAMPolicy:
     def reset(self):
         """Clear executor state and frame history between episodes."""
         self._executor.reset()
-        self._frames.clear()
-        self._first_frame = None
+        self._history.clear()
 
     def shutdown(self):
         """Release executor resources (background threads in async mode)."""
@@ -120,30 +166,10 @@ class WAMPolicy:
         if img is not None:
             # Single first frame — pipeline expects list[PIL.Image]
             conditions["first_frame_image"] = [img]
-            if self._history_num_frames:
-                conditions["history_images"] = self._history_frames(img)
+            if self._history.num_frames:
+                conditions["history_images"] = self._history.push(img)
         if obs.get("prompt"):
             conditions["prompt"] = obs["prompt"]
         if "state" in obs and obs["state"] is not None:
             conditions["proprio"] = obs["state"]
         return conditions
-
-    def _history_frames(self, img) -> list:
-        """Record this step's frame and return the past ones, oldest first.
-
-        One call per environment step. Frame ``k`` is the one seen
-        ``k * history_stride`` steps ago; before that many steps have passed it
-        is the episode's first frame, matching the training reader's clamp.
-        With ``history_include_first_frame`` the oldest slot always holds the
-        episode's first frame, which the bounded buffer may already have dropped.
-        """
-        if self._first_frame is None:
-            self._first_frame = img
-        self._frames.append(img)
-        newest = len(self._frames) - 1
-        frames = [
-            self._frames[max(newest - k * self._history_stride, 0)] for k in range(self._history_num_frames, 0, -1)
-        ]
-        if self._history_include_first_frame:
-            frames[0] = self._first_frame
-        return frames
