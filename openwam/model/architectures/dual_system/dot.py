@@ -60,11 +60,12 @@ _REQUIRED_VIDEO_MASK_MODE = "first_frame_causal"
 # loss skips them, so the first pass's output there is never trained, yet training
 # feeds the second pass the anchor ``(1 - w) * 0 + w * pred0`` on them (``w`` from
 # ``mip_refine_mode``: 0.5 for ``mixed``). Modes:
-#   zero    zero them before the second pass (the original inference)
-#   anchor  ``w * pred0``, the anchor training used (zero for ``gt``)
+#   anchor  ``w * pred0``, the anchor training used (zero for ``gt``); the default
+#   zero    zero them before the second pass (the inference before 2026-10-03)
 #   keep    ``pred0`` unchanged
 MIP_UNUSED_DIMS_ENV = "OPENWAM_DOT_MIP_UNUSED_DIMS"
 MIP_UNUSED_DIMS_MODES = ("zero", "anchor", "keep")
+MIP_UNUSED_DIMS_DEFAULT = "anchor"
 
 
 def _attention(q: Tensor, k: Tensor, v: Tensor, attn_mask: Optional[Tensor], num_heads: int) -> Tensor:
@@ -595,7 +596,7 @@ class DualSystemDoTArchitecture(BaseWAMArchitecture):
 
     def _mip_unused_dims_weight(self) -> float:
         """Scale on the first pass's unused-dim output in the second pass's input; see MIP_UNUSED_DIMS_ENV."""
-        mode = os.environ.get(MIP_UNUSED_DIMS_ENV, "zero").strip().lower()
+        mode = os.environ.get(MIP_UNUSED_DIMS_ENV, MIP_UNUSED_DIMS_DEFAULT).strip().lower()
         if mode not in MIP_UNUSED_DIMS_MODES:
             raise ValueError(f"{MIP_UNUSED_DIMS_ENV} must be one of {MIP_UNUSED_DIMS_MODES}, got {mode!r}")
         weight = {"zero": 0.0, "anchor": MIP_REFINE_PRED_WEIGHT[self._mip_refine_mode], "keep": 1.0}[mode]

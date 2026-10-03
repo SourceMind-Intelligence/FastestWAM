@@ -534,7 +534,8 @@ def test_dot_mip_generate_is_two_head_passes_from_zeros():
 @pytest.mark.parametrize(
     ("mode", "refine_mode", "scale"),
     [
-        (None, "mixed", 0.0),
+        (None, "mixed", 0.5),
+        (None, "gt", 0.0),
         ("zero", "mixed", 0.0),
         ("anchor", "mixed", 0.5),
         ("anchor", "gt", 0.0),
