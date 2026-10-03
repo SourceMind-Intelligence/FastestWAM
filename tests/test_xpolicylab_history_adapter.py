@@ -9,6 +9,7 @@ frames each chunk is conditioned on are checked against the training reader's ru
 from __future__ import annotations
 
 import importlib
+import json
 import shutil
 import sys
 import types
@@ -250,7 +251,7 @@ def _load_driver():
     return module
 
 
-def test_the_driver_runs_an_episode_and_compares_runs(adapter, tmp_path, monkeypatch):
+def test_the_driver_runs_an_episode_and_compares_runs(adapter, tmp_path, monkeypatch, capsys):
     driver = _load_driver()
     _build(adapter, _cfg(num=2, stride=3))
 
@@ -268,6 +269,9 @@ def test_the_driver_runs_an_episode_and_compares_runs(adapter, tmp_path, monkeyp
         driver.main(["--module", adapter.__name__, "--ckpt-dir", "ck", "--openwam-root", "src", "--envs", "2",
                      "--steps", "12", "--device", "cpu", "--out", str(out)])
         outs.append(str(out))
+    printed = capsys.readouterr().out
+    summary = json.loads(printed[printed.rindex("\n{") + 1 :])
+    assert summary["chunks"] == 2 and summary["actions_finite"] is True
     data = np.load(outs[0])
     # The driver serves full chunks (replan_steps null, as deploy.yml): 8 actions, so chunks start at 0 and 8,
     # and every one of the 12 steps is observed once.

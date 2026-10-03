@@ -153,6 +153,8 @@ def run(args) -> None:
         meta=json.dumps(meta),
     )
     timed = action_s[1:] or action_s
+    stacked = np.stack(chunks)
+    positions = stacked[..., [0, 1, 2, 8, 9, 10]]
     print(
         json.dumps(
             {
@@ -161,6 +163,8 @@ def run(args) -> None:
                 "chunk_s_median_after_first": round(float(np.median(timed)), 3),
                 "update_s_median": round(float(np.median(update_s)), 4),
                 "peak_allocated_gib": meta.get("peak_allocated_gib"),
+                "actions_finite": bool(np.isfinite(stacked).all()),
+                "position_range_m": [round(float(positions.min()), 3), round(float(positions.max()), 3)],
             },
             indent=1,
         )

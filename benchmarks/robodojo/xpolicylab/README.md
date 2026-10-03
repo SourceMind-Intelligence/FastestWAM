@@ -44,3 +44,6 @@ $PY $A --openwam-root /root/fastestwam --ckpt-dir <alpha> --out ours.npz
 $PY $A --compare stock.npz ours.npz             # same weights: tree and batching differences only
 $PY $A --openwam-root /root/fastestwam --ckpt-dir <history ckpt> --steps 224 --out history.npz   # timing with history
 ```
+
+The same checks on h100-box, with the latency bench's eval-time settings on both checkpoints, are scripted in
+`scripts/experiments/xpl_history_check_20261003.sh`.
