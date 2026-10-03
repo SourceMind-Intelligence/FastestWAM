@@ -24,7 +24,9 @@ import yaml
 LOG_DIR = "logs/phase1-20261002"
 RUNS = {
     "l1": ("libero_dot_l1_20261002", ["l1_fm10", "l1_fm2"]),
-    "l2": ("libero_dot_l2_20261002", ["l2_mip"]),
+    "l1e10": ("libero_dot_l1e10_20261002", ["l1e10_fm2"]),
+    # l2_mip_anchor: the full eval rerun with the second MIP pass fed the unused dims as in training.
+    "l2": ("libero_dot_l2_20261002", ["l2_mip", "l2_mip_anchor"]),
     "r1": ("robodojo_alpha_r1_20261002", []),
     "r3": ("robodojo_alpha_r3_20261002", []),
     "r4": ("robodojo_alpha_r4_20261002", []),
