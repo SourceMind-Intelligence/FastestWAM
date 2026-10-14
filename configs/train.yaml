@@ -53,10 +53,24 @@ training:
   save_full_states_for_resume: false  # Also save resumable full state (optimizer/scheduler/RNG) at each save;
                                       # required for training.resume_ckpt_path, costs extra disk per checkpoint
   keep_last_k_ckpts: 1           # Rolling window: keep only the last K checkpoints
+  # Disk-safe extras. Milestones are model-only (~22GiB on Wan DualSystem) and
+  # rotate under max_milestone_ckpts. Full resume state (~90GiB) rotates under
+  # max_full_ckpts — prefer save_full_states_for_resume=false when disk is tight.
+  milestone_save_steps: null     # e.g. [4000, 8000] → milestone_step_N.safetensors
+  max_full_ckpts: 1              # Cap on accel_state_* dirs when save_full_states_for_resume=true
+  max_milestone_ckpts: 1         # Cap on milestone_step_*; null/-1 = never prune milestones
+  disk_guard_warn_gb: 500        # Below this free space: log warning
+  disk_guard_critical_gb: 300    # Below this: skip new weights; rotate full to 1 only
+  measure_flops: false           # If true, wrap early steps in FlopCounterMode (extra VRAM)
+  assumed_step_tflops: 0.0       # If >0 and measure_flops=false, use this constant for cumulative TFLOPs
 
   # --- Finetune / Resume (mutually exclusive; both point to a training output dir, latest step auto-selected) ---
   finetune_ckpt_path: null   # non-null: warm-start from latest weights in this dir (step from 0, new output dir)
   resume_ckpt_path: null     # non-null: resume full state from latest in this dir (output reuses this dir)
+  # When true (default), finetune load_checkpoint raises on missing/unexpected/shape-mismatch keys.
+  # Set false for cross-architecture warm-starts (e.g. MoT foundation → DoT joint_cross_attn):
+  # matching video weights load; action DoT stays randomly initialized where shapes/names differ.
+  finetune_strict_load: true
 
   # --- Data loading ---
   dataset_num_workers: 8          # DataLoader num_workers (0 = main process)

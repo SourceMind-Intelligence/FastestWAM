@@ -93,11 +93,39 @@ def downsample_video_mask_to_latent(
     return torch.cat([first_latent_mask, tail_latent_mask], dim=-1)
 
 
+def _cfg_field(cfg: Any, name: str, default=None):
+    if isinstance(cfg, dict):
+        return cfg.get(name, default)
+    return getattr(cfg, name, default)
+
+
+def evenly_spaced_bridge_layers(num_layers: int, count: int) -> tuple:
+    """Evenly spaced video-layer indices in ``[0, num_layers)``, always including the last.
+
+    Used by DoT (``dot_num_layers``): a shallow ActionDiT cross-attends this many
+    video bridges. ``count=4, num_layers=30`` → ``(0, 10, 19, 29)``.
+    """
+    num_layers = int(num_layers)
+    count = int(count)
+    if num_layers < 1:
+        raise ValueError(f"num_layers must be >= 1, got {num_layers}")
+    if count < 1:
+        raise ValueError(f"dot_num_layers / count must be >= 1, got {count}")
+    if count > num_layers:
+        raise ValueError(f"dot_num_layers={count} exceeds video num_layers={num_layers}")
+    if count == 1:
+        return (num_layers - 1,)
+    last = num_layers - 1
+    return tuple(int(round(i * last / (count - 1))) for i in range(count))
+
+
 def resolve_bridge_layers(cfg: Any, *, num_layers: Optional[int] = None) -> tuple:
     """Parse ``bridge_layers`` indices from an architecture config.
 
-    Two input modes:
+    Input modes (first match wins):
       - Explicit: ``cfg.bridge_layers`` is a list / tuple / comma-separated str.
+      - DoT: ``cfg.bridge_layers`` is None and ``cfg.dot_num_layers`` is set;
+        evenly spaced indices via :func:`evenly_spaced_bridge_layers`.
       - Interval: ``cfg.bridge_layers`` is None and ``cfg.bridge_interval`` is set;
         the indices are ``range(0, num_layers, bridge_interval)``.
 
@@ -107,26 +135,29 @@ def resolve_bridge_layers(cfg: Any, *, num_layers: Optional[int] = None) -> tupl
 
     The output is always sorted with no duplicates.
     """
-    bl_raw = cfg.get("bridge_layers", None) if isinstance(cfg, dict) else getattr(cfg, "bridge_layers", None)
+    bl_raw = _cfg_field(cfg, "bridge_layers", None)
 
     if bl_raw is None:
-        interval_raw = (
-            cfg.get("bridge_interval", None) if isinstance(cfg, dict) else getattr(cfg, "bridge_interval", None)
-        )
-        if interval_raw is None:
-            raise ValueError("bridge_layers is null but bridge_interval is not set")
-
         if num_layers is None:
-            num_layers = (
-                cfg.get("num_dit_layers", None) if isinstance(cfg, dict) else getattr(cfg, "num_dit_layers", None)
+            num_layers = _cfg_field(cfg, "num_dit_layers", None)
+        if num_layers is None:
+            raise ValueError(
+                "num_layers must be provided (or num_dit_layers set on cfg) when bridge_layers is null"
             )
-        if num_layers is None:
-            raise ValueError("num_layers must be provided (or num_dit_layers set on cfg) when bridge_layers is null")
         num_layers = int(num_layers)
 
-        interval = int(interval_raw)
-        assert interval >= 1, f"bridge_interval must be >= 1, got {interval}"
-        bl = tuple(range(0, num_layers, interval))
+        dot_n = _cfg_field(cfg, "dot_num_layers", None)
+        if dot_n is not None:
+            bl = evenly_spaced_bridge_layers(num_layers, int(dot_n))
+        else:
+            interval_raw = _cfg_field(cfg, "bridge_interval", None)
+            if interval_raw is None:
+                raise ValueError(
+                    "bridge_layers is null but neither bridge_interval nor dot_num_layers is set"
+                )
+            interval = int(interval_raw)
+            assert interval >= 1, f"bridge_interval must be >= 1, got {interval}"
+            bl = tuple(range(0, num_layers, interval))
     elif isinstance(bl_raw, str):
         bl = tuple(int(x) for x in bl_raw.split(","))
     elif isinstance(bl_raw, tuple):
@@ -143,5 +174,6 @@ __all__ = [
     "VAE_TEMPORAL_FACTOR",
     "compute_video_tokens_per_frame",
     "downsample_video_mask_to_latent",
+    "evenly_spaced_bridge_layers",
     "resolve_bridge_layers",
 ]

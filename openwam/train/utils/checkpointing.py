@@ -217,6 +217,32 @@ def save_weights(accelerator, architecture, output_path: str, global_step: int, 
     tqdm.write(msg)
 
 
+def save_milestone_weights(accelerator, architecture, output_path: str, global_step: int) -> None:
+    """Write a protected model-only milestone (never pruned by ``keep_last_k``)."""
+    from tqdm import tqdm
+
+    if not accelerator.is_main_process:
+        return
+    ckpt_path = os.path.join(output_path, f"milestone_step_{global_step}.safetensors")
+    msg = f"[checkpoint] Saving milestone step {global_step} -> {ckpt_path}"
+    logger.info(msg)
+    tqdm.write(msg)
+    state_dict = accelerator.get_state_dict(architecture)
+    accelerator.unwrap_model(architecture).save_checkpoint(ckpt_path, state_dict=state_dict)
+    msg = f"[checkpoint] Saved milestone: {ckpt_path}"
+    logger.info(msg)
+    tqdm.write(msg)
+
+
+def disk_free_gb(path: str) -> float:
+    """Free space in GiB for the filesystem containing ``path``."""
+    import shutil
+
+    target = path if os.path.exists(path) else os.path.dirname(path) or "."
+    usage = shutil.disk_usage(target)
+    return usage.free / (1024.0**3)
+
+
 def save_full_state(accelerator, output_path: str, global_step: int, opt_step: int, epoch: int) -> None:
     """Write full Accelerate state to ``accel_state_step_N/`` for resume.
 
@@ -265,15 +291,20 @@ def step_num(path: str, prefix: str = "checkpoint_step_") -> int:
 
 
 def find_latest_weights(run_dir: str) -> str:
-    """Return the highest-step ``checkpoint_step_N.safetensors`` in *run_dir*.
+    """Return the highest-step deployable weights in *run_dir*.
 
-    Used by the finetune path. Malformed names are skipped; step-0-only triggers
-    a warning (likely a crash before the first real save).
+    Prefers ``checkpoint_step_N`` then falls back to ``milestone_step_N``.
     """
     files = _glob.glob(os.path.join(run_dir, "checkpoint_step_*.safetensors"))
+    prefix = "checkpoint_step_"
     if not files:
-        raise FileNotFoundError(f"No checkpoint_step_*.safetensors found in {run_dir}")
-    step_re = re.compile(r"checkpoint_step_(\d+)\.safetensors$")
+        files = _glob.glob(os.path.join(run_dir, "milestone_step_*.safetensors"))
+        prefix = "milestone_step_"
+    if not files:
+        raise FileNotFoundError(
+            f"No checkpoint_step_*.safetensors or milestone_step_*.safetensors found in {run_dir}"
+        )
+    step_re = re.compile(rf"{prefix}(\d+)\.safetensors$")
     numbered: list[tuple[int, str]] = []
     for f in files:
         m = step_re.search(os.path.basename(f))
@@ -282,7 +313,7 @@ def find_latest_weights(run_dir: str) -> str:
         else:
             logger.warning("Skipping malformed checkpoint name: %s", f)
     if not numbered:
-        raise FileNotFoundError(f"No file in {run_dir} matches checkpoint_step_<int>.safetensors")
+        raise FileNotFoundError(f"No file in {run_dir} matches {prefix}<int>.safetensors")
     numbered.sort(key=lambda p: p[0])
     latest_step, latest_path = numbered[-1]
     if latest_step == 0:
@@ -337,12 +368,19 @@ def compute_resume_position(global_step: int, batches_per_epoch: int, grad_accum
 # --- Retention / finalize (prune) ---
 
 
-def manage_checkpoints(output_dir: str, keep_last_k: int):
-    """Keep only the most recent *keep_last_k* checkpoints.
+def manage_checkpoints(
+    output_dir: str,
+    keep_last_k: int,
+    max_full_ckpts: int | None = None,
+    max_milestone_ckpts: int | None = None,
+):
+    """Keep only the most recent *keep_last_k* rolling checkpoints.
 
     Prunes ``checkpoint_step_*`` (weights, files) and ``accel_state_step_*``
-    (resume state, dirs) in lockstep so a kept weights file always retains its
-    sibling state dir.
+    (resume state, dirs). When ``max_milestone_ckpts`` is set, also rotates
+    ``milestone_step_*`` model-only files (otherwise milestones accumulate
+    unboundedly — ~22GiB each on Wan DualSystem). When ``max_full_ckpts`` is
+    set it caps resume dirs independently (typically 1 for disk-safe suites).
     """
     import shutil
 
@@ -354,9 +392,10 @@ def manage_checkpoints(output_dir: str, keep_last_k: int):
             os.remove(old)
             logger.info("Removed old checkpoint: %s", old)
 
+    full_keep = keep_last_k if max_full_ckpts is None else int(max_full_ckpts)
     state_dirs = [p for p in _glob.glob(os.path.join(output_dir, "accel_state_step_*")) if os.path.isdir(p)]
     state_dirs.sort(key=lambda p: step_num(p, "accel_state_step_"))
-    while len(state_dirs) > keep_last_k:
+    while len(state_dirs) > full_keep:
         old = state_dirs.pop(0)
         try:
             shutil.rmtree(old)
@@ -364,12 +403,27 @@ def manage_checkpoints(output_dir: str, keep_last_k: int):
         except OSError as e:
             logger.warning("Failed to remove old accelerate state dir %s: %s", old, e)
 
+    if max_milestone_ckpts is not None:
+        milestones = _glob.glob(os.path.join(output_dir, "milestone_step_*.safetensors"))
+        milestones.sort(key=lambda p: step_num(p, "milestone_step_"))
+        while len(milestones) > int(max_milestone_ckpts):
+            old = milestones.pop(0)
+            if os.path.isfile(old):
+                os.remove(old)
+                logger.info("Removed old milestone: %s", old)
 
-def finalize_keep_weights_only(output_dir: str, keep_last_k: int = 1):
+
+def finalize_keep_weights_only(
+    output_dir: str,
+    keep_last_k: int = 1,
+    max_milestone_ckpts: int | None = 1,
+):
     """Training-complete cleanup: drop all resume state, keep recent weights.
 
     Removes every ``accel_state_step_*`` dir and every ``checkpoint_step_*.safetensors``
-    except the most recent *keep_last_k*. Rank-0 only — caller must guard.
+    except the most recent *keep_last_k*. When ``max_milestone_ckpts`` is set,
+    also rotates milestones down to that cap (default 1). Rank-0 only — caller
+    must guard.
     """
     import shutil
 
@@ -388,3 +442,12 @@ def finalize_keep_weights_only(output_dir: str, keep_last_k: int = 1):
         if os.path.isfile(old):
             os.remove(old)
             logger.info("Removed old checkpoint after training completion: %s", old)
+
+    if max_milestone_ckpts is not None:
+        milestones = _glob.glob(os.path.join(output_dir, "milestone_step_*.safetensors"))
+        milestones.sort(key=lambda p: step_num(p, "milestone_step_"))
+        while len(milestones) > int(max_milestone_ckpts):
+            old = milestones.pop(0)
+            if os.path.isfile(old):
+                os.remove(old)
+                logger.info("Removed old milestone after training completion: %s", old)

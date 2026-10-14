@@ -4,6 +4,7 @@ from openwam.model.architectures.utils.common import (
     VAE_TEMPORAL_FACTOR,
     compute_video_tokens_per_frame,
     downsample_video_mask_to_latent,
+    evenly_spaced_bridge_layers,
     resolve_bridge_layers,
 )
 
@@ -11,5 +12,6 @@ __all__ = [
     "VAE_TEMPORAL_FACTOR",
     "compute_video_tokens_per_frame",
     "downsample_video_mask_to_latent",
+    "evenly_spaced_bridge_layers",
     "resolve_bridge_layers",
 ]

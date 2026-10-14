@@ -118,6 +118,43 @@ def _make_env_with_randomization_retries(task, cfg: dict, max_attempts: int = 5)
     raise AssertionError("unreachable")
 
 
+def _resolve_save_videos(cfg: dict, result_dir) -> Path | None:
+    if not _require_bool(cfg.get("save_videos", False), "save_videos"):
+        return None
+    video_dir = cfg.get("video_dir") or result_dir
+    if not video_dir:
+        raise ValueError("save_videos=true requires result_dir or video_dir")
+    path = Path(video_dir).expanduser().resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _append_video_frame(frames: list, obs: dict, camera_key: str) -> None:
+    # LIBERO offscreen RGB is vertically flipped relative to policy input; match
+    # libero.utils.video_utils.VideoWriter so saved rollouts look upright.
+    image = np.asarray(obs[camera_key])
+    if image.ndim != 3:
+        raise ValueError(f"expected HxWxC camera frame, got shape {image.shape}")
+    frames.append(np.ascontiguousarray(image[::-1]))
+
+
+def _write_trial_video(video_dir: Path, trial: int, success: bool, frames: list, fps: int = 20) -> Path | None:
+    if not frames:
+        return None
+    import imageio
+
+    tag = "ok" if success else "fail"
+    path = video_dir / f"trial_{trial:03d}_{tag}.mp4"
+    writer = imageio.get_writer(str(path), fps=fps)
+    try:
+        for frame in frames:
+            writer.append_data(frame)
+    finally:
+        writer.close()
+    print(f"[libero] video={path} frames={len(frames)}", flush=True)
+    return path
+
+
 def run_eval(cfg: dict) -> int:
     if str(cfg.get("action_mode", "")).strip().lower() != "eef":
         raise ValueError("LIBERO runner requires action_mode: eef")
@@ -142,6 +179,9 @@ def run_eval(cfg: dict) -> int:
     settle_action = _parse_settle_action(cfg.get("settle_action"), 7)
     reseed_each_trial = _require_bool(cfg.get("reseed_each_trial", False), "reseed_each_trial")
     fail_on_incomplete = _require_bool(cfg.get("fail_on_incomplete", False), "fail_on_incomplete")
+    camera_key = cfg.get("head_camera_key", "agentview_image")
+    video_dir = _resolve_save_videos(cfg, cfg.get("result_dir"))
+    video_fps = int(cfg.get("video_fps", 20))
 
     init_states = task_suite.get_task_init_states(task_id)
     env = _make_env_with_randomization_retries(task, cfg)
@@ -152,7 +192,7 @@ def run_eval(cfg: dict) -> int:
         port=int(cfg.get("port", 8848)),
         request_timeout=int(cfg.get("request_timeout", 300)),
         action_mode=cfg["action_mode"],
-        head_camera_key=cfg.get("head_camera_key", "agentview_image"),
+        head_camera_key=camera_key,
         left_wrist_camera_key=cfg.get("left_wrist_camera_key", "robot0_eye_in_hand_image"),
         right_wrist_camera_key=cfg.get("right_wrist_camera_key"),
         image_transform=cfg.get("image_transform", "rotate_180"),
@@ -172,16 +212,21 @@ def run_eval(cfg: dict) -> int:
             if reseed_each_trial:
                 env.seed(seed + trial)
             result = {"trial": trial, "success": False, "policy_steps": 0}
+            frames: list = []
             try:
                 obs = env.reset()
                 if len(init_states) > 0:
                     obs = env.set_init_state(init_states[trial % len(init_states)])
                 for _ in range(settle_steps):
                     obs, _, _, _ = env.step(settle_action)
+                if video_dir is not None:
+                    _append_video_frame(frames, obs, camera_key)
                 policy.reset()
                 done = False
                 for step in range(max_steps):
                     obs, reward, done, _ = env.step(policy.act(obs, task.language))
+                    if video_dir is not None:
+                        _append_video_frame(frames, obs, camera_key)
                     result["policy_steps"] = step + 1
                     result["last_reward"] = float(reward)
                     if done:
@@ -189,6 +234,12 @@ def run_eval(cfg: dict) -> int:
                         result["success"] = True
                         break
             finally:
+                if video_dir is not None:
+                    video_path = _write_trial_video(
+                        video_dir, trial, bool(result["success"]), frames, fps=video_fps
+                    )
+                    if video_path is not None:
+                        result["video"] = str(video_path)
                 trial_results.append(result)
             print(
                 f"[RESULT] trial={trial} success={result['success']} steps={result['policy_steps']}",
@@ -218,6 +269,7 @@ def run_eval(cfg: dict) -> int:
             "max_steps": max_steps,
             "settle_steps": settle_steps,
             "seed": seed,
+            "save_videos": video_dir is not None,
             "trials": trial_results,
         }
         path = output / "results.json"

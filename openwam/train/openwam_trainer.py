@@ -31,12 +31,14 @@ from omegaconf import DictConfig
 
 from openwam.train.utils.checkpointing import (
     compute_resume_position,
+    disk_free_gb,
     finalize_keep_weights_only,
     find_latest_accel_state,
     load_full_state,
     manage_checkpoints,
     save_config,
     save_full_state,
+    save_milestone_weights,
     save_normalization_stats,
     save_weights,
     verify_resume_normalization_stats,
@@ -50,6 +52,7 @@ from openwam.train.utils.training_utils import (
     log_parameter_counts,
     reduce_step_metrics,
     write_debug_loss_row,
+    write_scaling_metrics_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -230,6 +233,21 @@ class OpenWAMTrainer:
                 save_steps = int(save_steps)
         keep_last_k = int(getattr(t, "keep_last_k_ckpts", 3))
         save_full_states_for_resume = bool(getattr(t, "save_full_states_for_resume", False))
+        max_full_ckpts = int(getattr(t, "max_full_ckpts", keep_last_k))
+        milestone_raw = getattr(t, "milestone_save_steps", None)
+        milestone_steps = set()
+        if milestone_raw is not None:
+            milestone_steps = {int(s) for s in list(milestone_raw)}
+        # Cap protected milestones so they cannot accumulate unboundedly (~22GiB each).
+        # null / negative → no milestone rotation (legacy behaviour).
+        max_milestone_raw = getattr(t, "max_milestone_ckpts", 1)
+        if max_milestone_raw is None or int(max_milestone_raw) < 0:
+            max_milestone_ckpts = None
+        else:
+            max_milestone_ckpts = int(max_milestone_raw)
+        self._max_milestone_ckpts = max_milestone_ckpts
+        disk_warn_gb = float(getattr(t, "disk_guard_warn_gb", 300) or 0)
+        disk_critical_gb = float(getattr(t, "disk_guard_critical_gb", 150) or 0)
 
         # Finetune warm-start weights were already loaded at architecture
         # construction (__init__, self-contained ckpt-dir path). Step stays 0.
@@ -295,6 +313,14 @@ class OpenWAMTrainer:
 
         assert self.accelerator is not None, "OpenWAMTrainer requires an Accelerator"
 
+        # FLOPs accounting: optional FlopCounterMode probe (can inflate VRAM).
+        # Disabled by default; enable with training.measure_flops=true for short probes.
+        self._cum_tflops = 0.0
+        self._step_tflops = float(getattr(t, "assumed_step_tflops", 0.0) or 0.0) or None
+        measure_flops = bool(getattr(t, "measure_flops", False))
+        self._flops_probe_remaining = 3 if measure_flops else 0
+        self._flops_probe_skip = 1  # skip first step (compile / cache warmup)
+
         # Per-step manual_seed makes timestep + noise sampling in compute_loss
         # reproducible across runs and ZeRO stages: same (rank, step) -> same RNG,
         # different ranks at the same step keep in-batch timestep diversity.
@@ -318,10 +344,31 @@ class OpenWAMTrainer:
                     torch.manual_seed(step_seed)
                     if torch.cuda.is_available():
                         torch.cuda.manual_seed_all(step_seed)
+
+                flop_mode = None
+                do_flops_probe = self._flops_probe_remaining > 0 and self._flops_probe_skip <= 0
+                if do_flops_probe:
+                    try:
+                        from torch.utils.flop_counter import FlopCounterMode
+
+                        flop_mode = FlopCounterMode(display=False)
+                    except Exception as exc:  # pragma: no cover - optional path
+                        logger.warning("FlopCounterMode unavailable: %s", exc)
+                        self._flops_probe_remaining = 0
+
                 with self.accelerator.accumulate(self.architecture):
-                    losses = self.compute_loss(batch)
-                    loss = losses["total"]
-                    self.accelerator.backward(loss)
+                    def _one_train_step():
+                        losses_inner = self.compute_loss(batch)
+                        loss_inner = losses_inner["total"]
+                        if not losses_inner.get("backward_done"):
+                            self.accelerator.backward(loss_inner)
+                        return losses_inner, loss_inner
+
+                    if flop_mode is not None:
+                        with flop_mode:
+                            losses, loss = _one_train_step()
+                    else:
+                        losses, loss = _one_train_step()
 
                     grad_norm = torch.tensor(0.0, device=loss.device)
                     if self.accelerator.sync_gradients:
@@ -336,11 +383,14 @@ class OpenWAMTrainer:
 
                 global_step += 1
 
+                step_tflops = self._update_flops_accounting(flop_mode, do_flops_probe)
+
                 metrics = reduce_step_metrics(self.accelerator, losses, grad_norm)
 
                 current_lr = optimizer.param_groups[0]["lr"]
                 _now = _time.monotonic()
-                steps_per_sec = 1.0 / max(_now - _step_t0, 1e-9)
+                step_time = max(_now - _step_t0, 1e-9)
+                steps_per_sec = 1.0 / step_time
                 _step_t0 = _now
 
                 self.log_step(
@@ -355,16 +405,48 @@ class OpenWAMTrainer:
                     wandb_run=wandb_run,
                     debug=debug,
                     output_path=output_path,
+                    step_time=step_time,
+                    step_tflops=step_tflops,
+                    cum_tflops=self._cum_tflops,
                 )
 
-                # save_steps: write the weights line (+ the resumable full state when
-                # save_full_states_for_resume=true), then prune in lockstep.
-                if save_steps and global_step > 0 and global_step % save_steps == 0:
-                    save_weights(self.accelerator, self.architecture, output_path, global_step, final=False)
-                    if save_full_states_for_resume:
+                # Checkpoint on optimizer-step boundaries so 2-GPU + grad_accum
+                # matches 8-GPU step numbering (same samples / same opt updates).
+                at_periodic = False
+                at_milestone = False
+                if self.accelerator.sync_gradients:
+                    at_periodic = bool(save_steps and opt_step > 0 and opt_step % save_steps == 0)
+                    at_milestone = opt_step in milestone_steps
+                if at_periodic or at_milestone:
+                    # Shared filesystem — every rank can read free space independently.
+                    free_gb = disk_free_gb(output_path)
+                    critical = disk_critical_gb > 0 and free_gb < disk_critical_gb
+                    warn = disk_warn_gb > 0 and free_gb < disk_warn_gb
+                    if critical and is_main:
+                        logger.warning(
+                            "[disk_guard] free=%.1fGiB < critical=%.1fGiB — "
+                            "skipping milestone/rolling weights; rotating full only if enabled",
+                            free_gb,
+                            disk_critical_gb,
+                        )
+                    elif warn and is_main:
+                        logger.warning("[disk_guard] free=%.1fGiB < warn=%.1fGiB", free_gb, disk_warn_gb)
+
+                    # Milestone / rolling weights are named by opt_step (matches
+                    # 8-GPU step indexing). Full resume state stores real global_step.
+                    if at_milestone and not critical:
+                        save_milestone_weights(self.accelerator, self.architecture, output_path, opt_step)
+                    if at_periodic and not critical:
+                        save_weights(self.accelerator, self.architecture, output_path, opt_step, final=False)
+                    if save_full_states_for_resume and (at_periodic or at_milestone):
                         save_full_state(self.accelerator, output_path, global_step, opt_step, epoch)
                     if is_main:
-                        manage_checkpoints(output_path, keep_last_k)
+                        manage_checkpoints(
+                            output_path,
+                            keep_last_k,
+                            max_full_ckpts=1 if critical else max_full_ckpts,
+                            max_milestone_ckpts=0 if critical else max_milestone_ckpts,
+                        )
 
                 if max_steps and global_step >= max_steps:
                     pbar.close()
@@ -373,6 +455,43 @@ class OpenWAMTrainer:
 
         pbar.close()
         self.finish_training(output_path, global_step, save_steps, keep_last_k, is_main, wandb_run)
+
+    def _update_flops_accounting(self, flop_mode, do_flops_probe: bool) -> float:
+        """Update EMA'd per-step TFLOPs and cumulative total. Returns step TFLOPs."""
+        if self._flops_probe_skip > 0:
+            self._flops_probe_skip -= 1
+            step_tflops = float(self._step_tflops or 0.0)
+            self._cum_tflops += step_tflops
+            return step_tflops
+
+        if do_flops_probe and flop_mode is not None:
+            try:
+                flops = float(flop_mode.get_total_flops())
+            except Exception as exc:  # pragma: no cover
+                logger.warning("Failed to read FlopCounterMode total: %s", exc)
+                flops = 0.0
+            # Reduce mean across ranks (ZeRO-2 replicates fwd compute).
+            if self.accelerator is not None and self.accelerator.num_processes > 1:
+                t = torch.tensor([flops], device=self.accelerator.device, dtype=torch.float64)
+                t = self.accelerator.gather(t).mean()
+                flops = float(t.item())
+            measured = flops / 1e12
+            if self._step_tflops is None:
+                self._step_tflops = measured
+            else:
+                self._step_tflops = 0.5 * self._step_tflops + 0.5 * measured
+            self._flops_probe_remaining -= 1
+            if self._flops_probe_remaining == 0 and (
+                self.accelerator is None or self.accelerator.is_main_process
+            ):
+                logger.info(
+                    "[compute] calibrated step_tflops=%.4f (from FlopCounterMode)",
+                    self._step_tflops,
+                )
+
+        step_tflops = float(self._step_tflops or 0.0)
+        self._cum_tflops += step_tflops
+        return step_tflops
 
     # (3) Called by train() first — AdamW over the per-module (action/video) LR param groups.
     def build_optimizer(self) -> torch.optim.Optimizer:
@@ -565,13 +684,22 @@ class OpenWAMTrainer:
             **inputs,
             lambda_video=self.lambda_video,
             lambda_action=self.lambda_action,
+            accelerator=self.accelerator if getattr(self.architecture, "_action_objective", "flow") == "mip" else None,
         )
 
-        return {
+        out = {
             "total": result["loss"],
             "video": result.get("loss_video", torch.tensor(0.0)),
             "action": result.get("loss_action", torch.tensor(0.0)),
+            "backward_done": bool(result.get("backward_done", False)),
         }
+        if "loss_mip_t0" in result:
+            out["mip_t0"] = result["loss_mip_t0"]
+            out["mip_t09"] = result["loss_mip_t09"]
+        for key in ("pred0_gt_mse", "pred1_gt_mse", "refinement_gain"):
+            if key in result:
+                out[key] = result[key]
+        return out
 
     # (10) Called each step in train()'s loop — progress bar, wandb log, debug loss-history CSV.
     def log_step(
@@ -588,9 +716,18 @@ class OpenWAMTrainer:
         wandb_run,
         debug,
         output_path,
+        step_time: float = 0.0,
+        step_tflops: float = 0.0,
+        cum_tflops: float = 0.0,
     ) -> None:
         """Update progress bar, log to wandb, and (debug) write the loss-history CSV row."""
         labels = [("action", "loss_action")]
+        if "loss_mip_t0" in metrics:
+            labels = [
+                ("action", "loss_action"),
+                ("mip_t0", "loss_mip_t0"),
+                ("mip_t09", "loss_mip_t09"),
+            ]
         loss_total = metrics["loss_total"]
         loss_video = metrics["loss_video"]
         grad_norm = metrics["grad_norm"]
@@ -601,26 +738,64 @@ class OpenWAMTrainer:
                 postfix[name] = f"{metrics[key]:.4f}"
             postfix["lr"] = f"{lr:.2e}"
             postfix["epoch"] = epoch
+            if step_tflops:
+                postfix["tflops"] = f"{step_tflops:.2f}"
             pbar.set_postfix(postfix)
             pbar.update(1)
 
+        num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
+        is_main = self.accelerator is None or self.accelerator.is_main_process
         if wandb_run is not None:
-            num_procs = self.accelerator.num_processes if self.accelerator is not None else 1
             log_dict = {
                 "train/loss": loss_total,
+                "train/total_loss": loss_total,
                 "train/loss_video": loss_video,
+                "train/video_fm_loss": loss_video,
+                "train/action_loss": metrics["loss_action"],
                 "train/grad_norm": grad_norm,
                 "train/lr": lr,
+                "train/epoch": epoch,
+                "train/opt_step": opt_step,
+                "train/global_step": global_step,
+                "train/samples_seen": global_step * batch_size * num_procs,
                 "performance/steps_per_sec": steps_per_sec,
                 "performance/samples_per_sec": steps_per_sec * batch_size * num_procs,
+                "compute/train_step_time": float(step_time),
+                "compute/step_tflops": float(step_tflops),
+                "compute/cumulative_tflops": float(cum_tflops),
+                "compute/step": int(global_step),
             }
+            if "loss_mip_t0" in metrics:
+                log_dict["train/mip_loss_t0"] = metrics["loss_mip_t0"]
+                log_dict["train/mip_loss_t09"] = metrics["loss_mip_t09"]
+                log_dict["train/action_coarse_loss"] = metrics["loss_mip_t0"]
+                log_dict["train/action_refine_loss"] = metrics["loss_mip_t09"]
+            if "pred0_gt_mse" in metrics:
+                log_dict["train/pred0_gt_mse"] = metrics["pred0_gt_mse"]
+                log_dict["train/pred1_gt_mse"] = metrics["pred1_gt_mse"]
+                log_dict["train/refinement_gain"] = metrics["refinement_gain"]
             for name, key in labels:
                 log_dict[f"train/loss_{name}"] = metrics[key]
             wandb_run.log(log_dict, step=global_step)
 
+        if is_main and output_path:
+            write_scaling_metrics_row(
+                output_path,
+                metrics=metrics,
+                global_step=global_step,
+                opt_step=opt_step,
+                epoch=epoch,
+                lr=lr,
+                steps_per_sec=steps_per_sec,
+                batch_size=batch_size,
+                num_procs=num_procs,
+                step_tflops=step_tflops,
+                cum_tflops=cum_tflops,
+                step_time=step_time,
+            )
+
         if not debug:
             return
-        is_main = self.accelerator is None or self.accelerator.is_main_process
         if not is_main:
             return
         loss_parts = " ".join(f"{name}={metrics[key]:.6f}" for name, key in labels)
@@ -628,7 +803,7 @@ class OpenWAMTrainer:
             f"[debug][step {global_step:04d} opt {opt_step:04d}] "
             f"loss={loss_total:.6f} video={loss_video:.6f} {loss_parts} "
             f"grad_norm={grad_norm:.6f} lr={lr:.3e} epoch={epoch} "
-            f"steps_per_sec={steps_per_sec:.3f}"
+            f"steps_per_sec={steps_per_sec:.3f} step_tflops={step_tflops:.3f}"
         )
         logger.info(msg)
         if pbar is not None:
@@ -669,6 +844,10 @@ class OpenWAMTrainer:
             save_weights(self.accelerator, self.architecture, output_path, global_step, final=True)
         self.accelerator.wait_for_everyone()
         if is_main:
-            finalize_keep_weights_only(output_path, keep_last_k)
+            finalize_keep_weights_only(
+                output_path,
+                keep_last_k,
+                max_milestone_ckpts=getattr(self, "_max_milestone_ckpts", 1),
+            )
         if wandb_run is not None:
             wandb_run.finish()

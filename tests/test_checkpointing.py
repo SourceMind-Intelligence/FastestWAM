@@ -129,6 +129,31 @@ def test_manage_checkpoints_prunes_accel_state_in_lockstep(tmp_path):
     assert states == ["accel_state_step_200", "accel_state_step_300"]
 
 
+def test_manage_checkpoints_rotates_milestones(tmp_path):
+    for s in (1000, 2000, 3000, 4000):
+        (tmp_path / f"milestone_step_{s}.safetensors").write_text("x")
+        (tmp_path / f"checkpoint_step_{s}.safetensors").write_text("x")
+    manage_checkpoints(str(tmp_path), keep_last_k=1, max_milestone_ckpts=1)
+    assert sorted(p.name for p in tmp_path.glob("checkpoint_step_*")) == [
+        "checkpoint_step_4000.safetensors"
+    ]
+    assert sorted(p.name for p in tmp_path.glob("milestone_step_*")) == [
+        "milestone_step_4000.safetensors"
+    ]
+
+
+def test_finalize_rotates_milestones(tmp_path):
+    for s in (1000, 2000, 3000):
+        (tmp_path / f"checkpoint_step_{s}.safetensors").write_text("x")
+        (tmp_path / f"milestone_step_{s}.safetensors").write_text("x")
+    finalize_keep_weights_only(str(tmp_path), keep_last_k=1, max_milestone_ckpts=1)
+    remaining = sorted(p.name for p in tmp_path.iterdir())
+    assert remaining == [
+        "checkpoint_step_3000.safetensors",
+        "milestone_step_3000.safetensors",
+    ]
+
+
 # --- save/load_full_state metadata round-trip + atomic completion marker ---
 
 

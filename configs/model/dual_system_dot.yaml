@@ -1,0 +1,45 @@
+# DoT (Denoising Transformer) Dual-System:
+#   Video DiT runs to completion; a shallow ActionDiT cross-attends a few bridges.
+#   Contrasts with default dual_system joint_self_attn MoT (ActionDiT depth == video depth).
+#
+# Usage:
+#   model=dual_system_dot
+#   model.architecture.action_objective=mip|flow
+#   model.architecture.mip_refine_mode=mixed   # for SF MIP-2
+#   training.finetune_strict_load=false        # required when warm-starting from MoT foundation
+
+defaults:
+  - video_backbone: wan22_ti2v_5b
+  - action_backbone: separate_action_dit
+  - _self_
+
+freeze:
+  - video_backbone.text_encoder
+  - video_backbone.reason1
+  - video_backbone.vae
+  - video_backbone.image_encoder
+  - video_backbone.video_encoder
+
+architecture:
+  framework: dual_system
+  variant: joint_cross_attn
+  action_objective: flow
+  mip_t_star: 0.9
+  mip_num_steps: 2
+  mip_refine_mode: gt
+
+  action_dim: 80
+  use_proprioception: true
+  state_dim: 80
+
+  attention_mask_mode: mutual
+  video_attention_mask_mode: first_frame_causal
+
+  # 4-layer DoT: bridges at evenly spaced video layers (Wan-30 → 0,10,19,29).
+  bridge_layers: null
+  bridge_interval: 1
+  dot_num_layers: 4
+
+  mot_checkpoint_mixed_attn: true
+  detach_bridge: false
+  idm_video_cond_noise_prob: 0.5

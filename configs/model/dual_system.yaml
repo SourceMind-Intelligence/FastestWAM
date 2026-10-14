@@ -19,6 +19,18 @@ freeze:
 architecture:
   framework: dual_system
   variant: joint_self_attn   # joint_self_attn | joint_cross_attn | idm
+  # Action training/inference objective. ``flow`` is the original OpenWAM
+  # flow-matching path (bit-identical). ``mip`` replaces only the action
+  # loss and the N-step action sampler; video flow-matching is unchanged.
+  # Train and infer share linspace(0, mip_t_star, mip_num_steps).
+  action_objective: flow     # flow | mip
+  mip_t_star: 0.9            # end of MIP data-time grid (clean ← mix)
+  mip_num_steps: 2           # 2 → {0,0.9}; 4 → {0,0.3,0.6,0.9}
+  # MIP-2 refine training distribution (inference always uses pred0):
+  #   gt     = original MIP (0.9*GT + 0.1*noise)
+  #   mixed  = self-forcing (0.9*(0.5*GT+0.5*pred0.detach()) + 0.1*noise)
+  #   pred   = full self-forcing (0.9*pred0.detach() + 0.1*noise)
+  mip_refine_mode: gt
 
   action_dim: 80             # 80 = unified action space (unify_action=true); raw width otherwise (e.g. robotwin eef=20, joint=14)
   use_proprioception: true   # true = dataloader must provide sample["proprio"], appended as one proprio token
@@ -30,10 +42,13 @@ architecture:
   # Video<->video visibility: first_frame_causal | per_frame_causal | bidirectional
   video_attention_mask_mode: first_frame_causal
 
-  # ActionDiT layer selection: explicit list, or null + bridge_interval (1 = every layer, 2 = every other).
+  # ActionDiT layer selection (first match wins when bridge_layers is null):
+  #   explicit bridge_layers | dot_num_layers (DoT even spacing) | bridge_interval
   # joint_cross_attn: which video layers feed the bridge; joint_self_attn/idm: sizes ActionDiT.
+  # DoT = Denoising Transformer: variant=joint_cross_attn + shallow ActionDiT via dot_num_layers.
   bridge_layers: null
   bridge_interval: 1
+  dot_num_layers: null             # e.g. 4 → DoT with 4 evenly-spaced video bridges (incl. last)
 
   mot_checkpoint_mixed_attn: true  # joint_self_attn/idm only: grad-checkpoint the mixed attention (VRAM down)
   detach_bridge: false             # joint_cross_attn only

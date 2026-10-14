@@ -281,11 +281,16 @@ def build_architecture_from_ckpt_dir(ckpt_dir: str, *, weights_required: bool, o
 
     if weights_required:
         weights = explicit_weights or find_latest_weights(ckpt_dir)
-        logger.info("[%s] loading pretrained weights: %s", tag, weights)
+        # Cross-arch warm-starts (MoT foundation → DoT joint_cross_attn) need
+        # non-strict loads: video weights transfer, shallow ActionDiT reinits.
+        strict_load = True
+        if override_cfg is not None:
+            strict_load = bool(OmegaConf.select(override_cfg, "training.finetune_strict_load", default=True))
+        logger.info("[%s] loading pretrained weights: %s (strict=%s)", tag, weights, strict_load)
         # Plain print so the warm-start is visible on the launch terminal even
         # when logger output is drowned out; non-main ranks have print disabled.
-        print(f"[{tag}] loading pretrained weights: {weights}", flush=True)
-        architecture.load_checkpoint(weights)
+        print(f"[{tag}] loading pretrained weights: {weights} (strict={strict_load})", flush=True)
+        architecture.load_checkpoint(weights, strict=strict_load)
         print(f"[{tag}] pretrained weights loaded OK", flush=True)
     return resolved_arch, architecture, ckpt_cfg
 
