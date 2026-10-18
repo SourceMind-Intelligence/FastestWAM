@@ -37,7 +37,7 @@ run_arm() {
     run=$(find "$OUT/$name" -name checkpoint_step_1500.safetensors -print -quit)
     if [[ -n "$run" ]]; then
       GPUS="$policy_gpu" RENDER_GPUS="$render_gpu" BASE_PORT="$eval_port" \
-        timeout --signal=TERM --kill-after=60 5400 \
+        timeout --signal=INT --kill-after=60 5400 \
         bash scripts/experiments/run_libero_eval_stable.sh "$(dirname "$run")" "$(basename "$run")" \
         "$OUT/${name}_eval" --denoise-steps 2 --denoise-mode sync \
         --diagnostic-protocol --num-trials 5 --seed 42 > "$OUT/$name.eval.log" 2>&1

@@ -35,7 +35,11 @@
 
 本地 cross-attention ActionDiT 的动作编码是逐 token 线性层，没有绝对位置编码。MIP 初始输入是全零，因此所有 action token 相同。self-attention 的 RoPE 只改变 Q/K，而 V 仍完全相同：每行 attention 权重的加权和仍是同一个 V。bridge/text cross-attention 没有位置编码，相同 query 读取相同输出；逐 token FFN 和全局 timestep 调制也保持相同。由层数归纳，任何深度都不能产生时间上不同的动作。确定性 `0.9*pred0` refinement 继续保留这一性质。浮点计算会产生微小误差，这不是可依赖的时间信号。
 
+实际训练的 DoT-4 MIP-GT action weights + 合成 bridge 条件下，fp32 coarse/refine 最大时间差分别为 2.61e-7 / 2.83e-7；scale0.1 时分别为 0.140 / 0.215（未训练位置编码，不能解释为成功率恢复）。可复现脚本为 `diagnose_mip_temporal_symmetry.py`，结果见 `trained_mip_symmetry.json`。
+
 `tests/test_mip_temporal_symmetry.py` 在 1/4/8 层、带随机 video bridge 和文本条件下复现该性质，fp32 的最大 token 差约 1e-7；Gaussian action 输入能够打破它。MoT 把 action query 与位置编码后的多样 video value 联合注意力，因此不受这个相同的归纳约束。这为 FM 正常而 MIP 失败提供了具体的结构解释，**但还没有证明它是全部闭环失败的唯一原因**。
+
+数据侧也有独立证据：从 273,465 个训练 windows 中固定 seed42 抽取 1,024 个，对每个 32-step chunk 求“知道未来真值的最优时间常量动作”，按真实有效维度/时间 mask 计算 MSE，平均下界为 **0.05487**。历史 DoT-MIP coarse 的末 100 microbatches 均值约 **0.053–0.055**，数量级吻合这个表达能力下界。它们来自不同样本，不能逐点作下界比较；但这比“训练没收敛”的解释更具体。真实 checkpoint 的 CPU bf16 诊断中，未修复 coarse/refine 的时间差甚至都为 **0**。详见 `constant_action_lower_bound.json`、`trained_mip_symmetry_bf16.json`。
 
 新增 `model.architecture.action_position_scale`：默认 0 保持所有旧 checkpoint 行为；正值在 cross-attention 的动作 embedding 上加入固定 sinusoidal position，不增加 checkpoint 参数。不能直接声称改推理即可恢复性能；需要训练适配。`run_mip_position_rescue.sh` 做同一个已训 MIP-GT checkpoint 的两臂短程 continuation：scale=0 / 0.1，冻结视频、同 seed、同 batch 和 1500 microbatches，再各做 40×5 的诊断评测。这是时间受限的机制实验，不替代完整收敛和多 seed 控制。
 
@@ -102,3 +106,20 @@
 ## 保存范围与复现限制
 
 GitHub 保存研究代码、测试、配置、逐 episode 结果、压缩标量日志与审计。大模型权重、原始训练数据、环境目录和 `.env` 不进入 Git。权重现存于本机 `outputs/experiments/`；这份 Git 备份不等于权重备份。历史运行未全面记录源码 commit，无法追溯证明当时执行代码与当前 HEAD 完全一致；评测 manifest 和配置哈希只能覆盖其实际记录的部分。
+
+## 本轮新增机制实验与自动归档
+
+三个训练种子的合成条件轨迹回归（每臂 500 updates、128 train / 64 test observations）中，不加位置编码的测试 MSE 为 0.1446 / 0.1511 / 0.1513，接近各自常量轨迹 oracle 下界；scale0.1 降到 0.00353 / 0.00433 / 0.00400。这只是小模型表达能力实验，不是 LIBERO 成绩，也不代表真实模型的修复已成功。数据与脚本分别为 `toy_position_regression.json` / `toy_mip_position_regression.py`。
+
+`collect_last4h_evidence.py` 每分钟保存完成任务、未完成覆盖范围、FLOPs 和修复训练曲线到 `results/last4h_20261018/`，不把未完成任务计作失败。观察器截至北京时间 23:40。GPU6 的原 MoT 渲染分支因连续 SIGABRT 被终止并标记排除；独立重跑改为 policy/render 均在 GPU2，结果名带 `render2`，不与旧进程结果混合。
+
+GPU0 评测结束后，`queue_last4h_latency.sh` 排队执行独占延迟测量：同卡、eager、关闭 DiT cache、warm prompt cache，horizon1 强制每次重新生成 chunk，固定合成图像，记录 warmup 后 p50/p95。该测量包含 server.predict 前处理及生成，不包含 WebSocket 或 simulator；若因时限未执行，不填造延迟结果。
+
+## 本轮实测 FLOPs（6-microbatch 校准已完成）
+
+| 架构 | FM TFLOPs / rank / microbatch | MIP-GT TFLOPs / rank / microbatch | 比值 |
+|---|---:|---:|---:|
+| Cross-4 | 24.6699 | 40.4911 | 1.6413× |
+| MoT | 25.4773 | 42.1059 | 1.6527× |
+
+每 rank batch1、4 ranks、bf16、ZeRO2、gradient checkpointing；计数器包住 loss + backward，首步 warmup 后测 3 步。全 rank 总算子数为表值乘4。这是 PyTorch FlopCounterMode 覆盖算子的统计，未声称涵盖通信、所有未注册 kernel 或 optimizer 操作。共同的编码器开销也计入测量，因此 MIP/FM 比例不必等于2。原始6行 metrics 与配置存于 `results/last4h_20261018/flops/`。不能拿该 batch1 校准直接填充旧 batch8 训练日志的“实测累计 TFLOPs”。

@@ -191,3 +191,46 @@ def test_diagnostic_results_cannot_resume_as_canonical(tmp_path):
     diagnostic = scheduler._resume_signature(args, **kwargs)
     assert diagnostic['protocol_version'] == canonical['protocol_version'] + '-diagnostic'
     assert diagnostic != canonical
+
+
+def test_sigterm_cleans_up_managed_processes(monkeypatch, tmp_path):
+    import os
+    import signal
+    import subprocess
+    import sys
+
+    children = []
+    previous = signal.getsignal(signal.SIGTERM)
+    monkeypatch.setattr(scheduler, '_preflight', lambda args: None)
+    monkeypatch.setattr(scheduler, '_mujoco_version', lambda _: scheduler.REQUIRED_MUJOCO_VERSION)
+    monkeypatch.setattr(scheduler, '_enumerate_task_counts', lambda suites, **kw: {s: 1 for s in suites})
+    monkeypatch.setattr(scheduler, '_port_is_open', lambda *args: False)
+
+    def start_servers(args, *, slots, output_dir, registry):
+        child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'], start_new_session=True)
+        children.append(child)
+        registry.add(child)
+        return []
+
+    def worker(*args, stop_event, **kwargs):
+        stop_event.wait(5)
+        return []
+
+    monkeypatch.setattr(scheduler, '_start_servers', start_servers)
+    monkeypatch.setattr(scheduler, '_dynamic_worker', worker)
+    monkeypatch.setattr(scheduler, '_wait_for_dynamic_queue', lambda *args: os.kill(os.getpid(), signal.SIGTERM))
+    try:
+        result = scheduler.main(['--output-dir', str(tmp_path/'eval'), '--gpus', '0',
+                                 '--replicas-per-gpu', '1', '--suites', 'spatial', '--smoke'])
+        assert result == 130
+        assert children and children[0].poll() is not None
+        assert signal.getsignal(signal.SIGTERM) == previous
+        summary = json.loads((tmp_path/'eval/summary.json').read_text())
+        assert summary['overall']['trials'] == 0
+        assert summary['overall']['tasks_complete'] == 0
+    finally:
+        for child in children:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait()
+        signal.signal(signal.SIGTERM, previous)

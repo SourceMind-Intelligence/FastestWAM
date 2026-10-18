@@ -1,0 +1,45 @@
+{
+  "checkpoint": "outputs/experiments/libero_weekend_autoresearch_2026-10-16_22-07-41/DOT4_MIP_gt_from_foundation/2026-10-17_18-21-37/checkpoint_step_17092.safetensors",
+  "checkpoint_bytes": 23198753536,
+  "seed": 42,
+  "dtype": "float32",
+  "device": "cpu",
+  "num_heads": 24,
+  "video_layers": 30,
+  "bridge_tokens": 64,
+  "action_tokens": 32,
+  "synthetic_bridges": true,
+  "results": [
+    {
+      "position_scale": 0.0,
+      "coarse": {
+        "max_abs_delta_from_first_token": 2.60770320892334e-07,
+        "mean_temporal_std": 3.9785994943031255e-08
+      },
+      "refined": {
+        "max_abs_delta_from_first_token": 2.8312206268310547e-07,
+        "mean_temporal_std": 4.9750422448369136e-08
+      },
+      "random_action_input": {
+        "max_abs_delta_from_first_token": 3.8166964054107666,
+        "mean_temporal_std": 0.48917657136917114
+      }
+    },
+    {
+      "position_scale": 0.1,
+      "coarse": {
+        "max_abs_delta_from_first_token": 0.13997749984264374,
+        "mean_temporal_std": 0.01945563592016697
+      },
+      "refined": {
+        "max_abs_delta_from_first_token": 0.2148323953151703,
+        "mean_temporal_std": 0.026526981964707375
+      },
+      "random_action_input": {
+        "max_abs_delta_from_first_token": 3.9620041847229004,
+        "mean_temporal_std": 0.486136257648468
+      }
+    }
+  ],
+  "caveat": "Synthetic features, trained action weights. No inference-success claim for untrained position encoding."
+}

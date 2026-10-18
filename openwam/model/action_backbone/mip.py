@@ -1,4 +1,4 @@
-"""MIP (Mean Inverse Prediction) helpers for the action stream.
+"""MIP (Minimal Iterative Policy) helpers for the action stream.
 
 MIP data-time ``t ∈ [0, 1]`` uses ``t=1`` as clean action and ``t=0`` as the
 start of the trajectory. OpenWAM's ActionDiT was pretrained with flow-matching

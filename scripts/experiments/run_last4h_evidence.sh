@@ -20,7 +20,7 @@ printf '%s\n' "$OUT" > outputs/last4h_latest.txt
 run_arm() {
   local name="$1" gpu="$2" render="$3" port="$4" dir="$5" ckpt="$6" steps="$7" seed="$8"
   GPUS="$gpu" RENDER_GPUS="$render" BASE_PORT="$port" \
-    timeout --signal=TERM --kill-after=60 "$BUDGET_SECONDS" \
+    timeout --signal=INT --kill-after=60 "$BUDGET_SECONDS" \
     bash scripts/experiments/run_libero_eval_stable.sh "$dir" "$ckpt" "$OUT/$name" \
     --denoise-steps "$steps" --denoise-mode sync --num-trials 10 --seed "$seed" --diagnostic-protocol \
     > "$OUT/$name.log" 2>&1 &

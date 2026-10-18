@@ -1353,6 +1353,11 @@ def main(argv: list[str] | None = None) -> int:
     failed_jobs = []
     executor: concurrent.futures.ThreadPoolExecutor | None = None
     futures: list[concurrent.futures.Future] = []
+    # Managed servers start new process groups. A timeout's SIGTERM must run
+    # the same cleanup as Ctrl-C, otherwise those GPU processes are orphaned.
+    previous_sigterm = None
+    if threading.current_thread() is threading.main_thread():
+        previous_sigterm = signal.signal(signal.SIGTERM, signal.default_int_handler)
     try:
         if args.server_mode == "managed":
             servers = _start_servers(
@@ -1400,6 +1405,8 @@ def main(argv: list[str] | None = None) -> int:
             executor.shutdown(wait=True, cancel_futures=True)
         for server in servers:
             server.log_handle.close()
+        if previous_sigterm is not None:
+            signal.signal(signal.SIGTERM, previous_sigterm)
 
     _, complete = _summarize(output_dir, jobs, trial_run, write_files=True)
     if not complete:
