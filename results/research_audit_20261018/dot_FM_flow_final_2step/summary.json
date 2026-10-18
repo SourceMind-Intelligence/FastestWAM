@@ -1,0 +1,526 @@
+{
+  "task_results": [
+    {
+      "suite": "libero_spatial",
+      "task_id": 0,
+      "task_name": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_00/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 1,
+      "task_name": "pick_up_the_black_bowl_next_to_the_ramekin_and_place_it_on_the_plate",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_01/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 2,
+      "task_name": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_02/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 3,
+      "task_name": "pick_up_the_black_bowl_on_the_cookie_box_and_place_it_on_the_plate",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_03/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 4,
+      "task_name": "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate",
+      "successes": 47,
+      "trials": 50,
+      "success_rate": 0.94,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_04/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 5,
+      "task_name": "pick_up_the_black_bowl_on_the_ramekin_and_place_it_on_the_plate",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_05/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 6,
+      "task_name": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_06/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 7,
+      "task_name": "pick_up_the_black_bowl_on_the_stove_and_place_it_on_the_plate",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_07/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 8,
+      "task_name": "pick_up_the_black_bowl_next_to_the_plate_and_place_it_on_the_plate",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_08/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 9,
+      "task_name": "pick_up_the_black_bowl_on_the_wooden_cabinet_and_place_it_on_the_plate",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_spatial/task_09/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 0,
+      "task_name": "open_the_middle_drawer_of_the_cabinet",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_00/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 1,
+      "task_name": "put_the_bowl_on_the_stove",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_01/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 2,
+      "task_name": "put_the_wine_bottle_on_top_of_the_cabinet",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_02/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 3,
+      "task_name": "open_the_top_drawer_and_put_the_bowl_inside",
+      "successes": 45,
+      "trials": 50,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_03/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 4,
+      "task_name": "put_the_bowl_on_top_of_the_cabinet",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_04/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 5,
+      "task_name": "push_the_plate_to_the_front_of_the_stove",
+      "successes": 47,
+      "trials": 50,
+      "success_rate": 0.94,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_05/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 6,
+      "task_name": "put_the_cream_cheese_in_the_bowl",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_06/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 7,
+      "task_name": "turn_on_the_stove",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_07/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 8,
+      "task_name": "put_the_bowl_on_the_plate",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_08/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 9,
+      "task_name": "put_the_wine_bottle_on_the_rack",
+      "successes": 31,
+      "trials": 50,
+      "success_rate": 0.62,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_goal/task_09/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 0,
+      "task_name": "pick_up_the_alphabet_soup_and_place_it_in_the_basket",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_00/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 1,
+      "task_name": "pick_up_the_cream_cheese_and_place_it_in_the_basket",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_01/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 2,
+      "task_name": "pick_up_the_salad_dressing_and_place_it_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_02/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 3,
+      "task_name": "pick_up_the_bbq_sauce_and_place_it_in_the_basket",
+      "successes": 38,
+      "trials": 50,
+      "success_rate": 0.76,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_03/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 4,
+      "task_name": "pick_up_the_ketchup_and_place_it_in_the_basket",
+      "successes": 47,
+      "trials": 50,
+      "success_rate": 0.94,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_04/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 5,
+      "task_name": "pick_up_the_tomato_sauce_and_place_it_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_05/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 6,
+      "task_name": "pick_up_the_butter_and_place_it_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_06/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 7,
+      "task_name": "pick_up_the_milk_and_place_it_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_07/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 8,
+      "task_name": "pick_up_the_chocolate_pudding_and_place_it_in_the_basket",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_08/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 9,
+      "task_name": "pick_up_the_orange_juice_and_place_it_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_object/task_09/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 0,
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_alphabet_soup_and_the_tomato_sauce_in_the_basket",
+      "successes": 41,
+      "trials": 50,
+      "success_rate": 0.82,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_00/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 1,
+      "task_name": "LIVING_ROOM_SCENE2_put_both_the_cream_cheese_box_and_the_butter_in_the_basket",
+      "successes": 50,
+      "trials": 50,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_01/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 2,
+      "task_name": "KITCHEN_SCENE3_turn_on_the_stove_and_put_the_moka_pot_on_it",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_02/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 3,
+      "task_name": "KITCHEN_SCENE4_put_the_black_bowl_in_the_bottom_drawer_of_the_cabinet_and_close_it",
+      "successes": 49,
+      "trials": 50,
+      "success_rate": 0.98,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_03/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 4,
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "successes": 34,
+      "trials": 50,
+      "success_rate": 0.68,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_04/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 5,
+      "task_name": "STUDY_SCENE1_pick_up_the_book_and_place_it_in_the_back_compartment_of_the_caddy",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_05/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 6,
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "successes": 42,
+      "trials": 50,
+      "success_rate": 0.84,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_06/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 7,
+      "task_name": "LIVING_ROOM_SCENE1_put_both_the_alphabet_soup_and_the_cream_cheese_box_in_the_basket",
+      "successes": 41,
+      "trials": 50,
+      "success_rate": 0.82,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_07/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 8,
+      "task_name": "KITCHEN_SCENE8_put_both_moka_pots_on_the_stove",
+      "successes": 45,
+      "trials": 50,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_08/trials_000_049/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 9,
+      "task_name": "KITCHEN_SCENE6_put_the_yellow_and_white_mug_in_the_microwave_and_close_it",
+      "successes": 48,
+      "trials": 50,
+      "success_rate": 0.96,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/dot_FM_flow_final_2step/videos/libero_10/task_09/trials_000_049/attempt_01/results.json"
+      ]
+    }
+  ],
+  "suite_results": [
+    {
+      "suite": "libero_spatial",
+      "successes": 488,
+      "trials": 500,
+      "success_rate": 0.976,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_goal",
+      "successes": 468,
+      "trials": 500,
+      "success_rate": 0.936,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_object",
+      "successes": 481,
+      "trials": 500,
+      "success_rate": 0.962,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_10",
+      "successes": 446,
+      "trials": 500,
+      "success_rate": 0.892,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    }
+  ],
+  "overall": {
+    "successes": 1883,
+    "trials": 2000,
+    "success_rate": 0.9415,
+    "tasks_complete": 40,
+    "tasks_expected": 40
+  },
+  "missing_runs": []
+}

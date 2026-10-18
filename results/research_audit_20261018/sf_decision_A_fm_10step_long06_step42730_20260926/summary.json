@@ -1,0 +1,34 @@
+{
+  "task_results": [
+    {
+      "suite": "libero_10",
+      "task_id": 6,
+      "task_name": "LIVING_ROOM_SCENE6_put_the_white_mug_on_the_plate_and_put_the_chocolate_pudding_to_the_right_of_the_plate",
+      "successes": 44,
+      "trials": 50,
+      "success_rate": 0.88,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/sf_decision_A_fm_10step_long06_step42730_20260926/videos/libero_10/task_06/trials_000_049/attempt_01/results.json"
+      ]
+    }
+  ],
+  "suite_results": [
+    {
+      "suite": "libero_10",
+      "successes": 44,
+      "trials": 50,
+      "success_rate": 0.88,
+      "tasks_complete": 1,
+      "tasks_expected": 1
+    }
+  ],
+  "overall": {
+    "successes": 44,
+    "trials": 50,
+    "success_rate": 0.88,
+    "tasks_complete": 1,
+    "tasks_expected": 1
+  },
+  "missing_runs": []
+}

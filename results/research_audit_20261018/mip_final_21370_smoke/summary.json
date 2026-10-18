@@ -1,0 +1,34 @@
+{
+  "task_results": [
+    {
+      "suite": "libero_spatial",
+      "task_id": 0,
+      "task_name": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate",
+      "successes": 1,
+      "trials": 1,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/mip_final_21370_smoke/videos/libero_spatial/task_00/trials_000_000/attempt_01/results.json"
+      ]
+    }
+  ],
+  "suite_results": [
+    {
+      "suite": "libero_spatial",
+      "successes": 1,
+      "trials": 1,
+      "success_rate": 1.0,
+      "tasks_complete": 1,
+      "tasks_expected": 1
+    }
+  ],
+  "overall": {
+    "successes": 1,
+    "trials": 1,
+    "success_rate": 1.0,
+    "tasks_complete": 1,
+    "tasks_expected": 1
+  },
+  "missing_runs": []
+}

@@ -473,7 +473,9 @@ def _resume_signature(
         json.dumps(jobs_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     return {
-        "protocol_version": LIBERO_PROTOCOL_VERSION,
+        "protocol_version": LIBERO_PROTOCOL_VERSION + (
+            "-diagnostic" if getattr(args, "diagnostic_protocol", False) else ""
+        ),
         "checkpoint": str(args.ckpt_dir / args.ckpt_name),
         "policy_config_sha256": _file_sha256(args.policy_config),
         "seed_override": args.seed,
@@ -1034,7 +1036,8 @@ def _validate_protocol(args: argparse.Namespace) -> None:
     errors = []
     effective_num_trials = 1 if args.smoke else args.num_trials
     expected_num_trials = 1 if args.smoke else 50
-    if effective_num_trials != expected_num_trials or args.trial_start != 0:
+    diagnostic = getattr(args, "diagnostic_protocol", False)
+    if not diagnostic and (effective_num_trials != expected_num_trials or args.trial_start != 0):
         errors.append(
             f"trial range must be 0:{expected_num_trials}, "
             f"got {args.trial_start}:{args.trial_start + effective_num_trials}"
@@ -1043,7 +1046,7 @@ def _validate_protocol(args: argparse.Namespace) -> None:
         errors.append("SPATIAL/OBJECT/GOAL must use 600 steps and LONG must use 700 steps")
     if cfg.get("settle_steps") != 30 or cfg.get("settle_action") != [0, 0, 0, 0, 0, 0, -1]:
         errors.append("settling must use 30 actions with gripper=-1")
-    if effective_seed != 42:
+    if not diagnostic and effective_seed != 42:
         errors.append(f"effective seed must be 42, got {effective_seed!r}")
     if cfg.get("rng_mode") != "environment":
         errors.append("rng_mode must be 'environment'")
@@ -1125,6 +1128,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="seed used by --task-sample-ratio",
     )
     parser.add_argument("--trial-start", type=int, default=0)
+    parser.add_argument(
+        "--diagnostic-protocol", action="store_true",
+        help="Allow noncanonical trial ranges/seeds; mark resume signature as diagnostic. "
+             "These results must not be reported as the canonical 40x50 benchmark.",
+    )
     parser.add_argument(
         "--num-trials",
         type=int,

@@ -24,8 +24,9 @@
 #   -h, --help
 #
 # Required env vars:
-#   ROBOTWIN_PATH    — path to the RoboTwin repository
 #   ROBOTWIN_PYTHON  — Python for RoboTwin (or set ROBOTWIN_ENV conda env name)
+# Optional env vars:
+#   ROBOTWIN_PATH    — RoboTwin repo (default: <repo>/third_party/RoboTwin)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,0 +1,22 @@
+{
+  "summary_sha256": "4614b6bf1021f0916843ad721b2c22a5f1ecdd7c1ba1b4f1585d38f387775207",
+  "manifest_sha256": "b05854ec38e20b2743eb21fc6bb664d13f1ea54717b1e4c8643d013a9bd9124e",
+  "errors": [],
+  "ci_note": "Wilson interval treats episodes as independent; not training-seed or task-cluster uncertainty.",
+  "run": "sf_decision_A_fm_2step_all_suites_step42730_20260927",
+  "tasks": 40,
+  "successes": 1938,
+  "trials": 2000,
+  "success_pct": 96.9,
+  "wilson_low_pct": 96.04592717918264,
+  "wilson_high_pct": 97.57425378583581,
+  "full_40x50": true,
+  "raw_counts_verified": true,
+  "denoise_steps": 2,
+  "seed": 42,
+  "checkpoint": "outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/A_fm/2026-09-25_00-54-12/checkpoint_step_42730.safetensors",
+  "libero_spatial": 98.2,
+  "libero_object": 97.4,
+  "libero_goal": 98.0,
+  "libero_10": 94.0
+}

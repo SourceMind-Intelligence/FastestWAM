@@ -360,7 +360,12 @@ def bootstrap_robotwin_module(*, install_trace_hooks: bool = True):
     """
     robotwin_path = os.environ.get("ROBOTWIN_PATH")
     if not robotwin_path:
-        raise SystemExit("ROBOTWIN_PATH must be set")
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        candidate = os.path.join(repo_root, "third_party", "RoboTwin")
+        if os.path.isfile(os.path.join(candidate, "script", "eval_policy.py")):
+            robotwin_path = candidate
+    if not robotwin_path:
+        raise SystemExit("ROBOTWIN_PATH must be set (or place RoboTwin at third_party/RoboTwin)")
 
     _warn_on_unverified_robotwin(robotwin_path)
     runtime_root = _prepare_runtime_root(robotwin_path)

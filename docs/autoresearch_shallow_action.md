@@ -1,3 +1,5 @@
+> Superseded by the [2026-10-18 evidence audit](arxiv_readiness_20261018.md). The causal claims and predicted benefits below were working hypotheses; completed weekend results do not support several of them.
+
 # AutoResearch: Better Action Generation on Shallow DoT
 
 **Date:** 2026-10-16 · **GPU window:** through this weekend · **Branch:** `tengfei`

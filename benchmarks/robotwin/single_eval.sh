@@ -13,9 +13,9 @@
 #   host         — OpenWAM server host (default: 127.0.0.1, env: ROBOTWIN_POLICY_HOST)
 #
 # Required env vars:
-#   ROBOTWIN_PATH    — path to the RoboTwin repository
 #   ROBOTWIN_PYTHON  — Python interpreter for the RoboTwin env
 # Optional env vars:
+#   ROBOTWIN_PATH     — RoboTwin repo (default: <repo>/third_party/RoboTwin)
 #   ROBOTWIN_TEST_NUM — cap RoboTwin eval episodes for smoke runs (default: upstream 100)
 set -euo pipefail
 
@@ -25,8 +25,9 @@ if [[ $# -lt 4 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-ROBOTWIN_PATH="${ROBOTWIN_PATH:?ROBOTWIN_PATH must be set to the RoboTwin repository root}"
+ROBOTWIN_PATH="${ROBOTWIN_PATH:-${REPO_ROOT}/third_party/RoboTwin}"
 [[ -d "${ROBOTWIN_PATH}" ]] || { echo "[ERROR] ROBOTWIN_PATH not found: ${ROBOTWIN_PATH}" >&2; exit 1; }
 
 robotwin_eval_script="${SCRIPT_DIR}/eval_policy_wrapper.py"

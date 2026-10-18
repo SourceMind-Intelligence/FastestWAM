@@ -1,0 +1,34 @@
+{
+  "task_results": [
+    {
+      "suite": "libero_10",
+      "task_id": 4,
+      "task_name": "LIVING_ROOM_SCENE5_put_the_white_mug_on_the_left_plate_and_put_the_yellow_and_white_mug_on_the_right_plate",
+      "successes": 47,
+      "trials": 50,
+      "success_rate": 0.94,
+      "complete": true,
+      "result_paths": [
+        "outputs/libero/sf_decision_C_mip_mixed_long04_step42730_20260927/videos/libero_10/task_04/trials_000_049/attempt_01/results.json"
+      ]
+    }
+  ],
+  "suite_results": [
+    {
+      "suite": "libero_10",
+      "successes": 47,
+      "trials": 50,
+      "success_rate": 0.94,
+      "tasks_complete": 1,
+      "tasks_expected": 1
+    }
+  ],
+  "overall": {
+    "successes": 47,
+    "trials": 50,
+    "success_rate": 0.94,
+    "tasks_complete": 1,
+    "tasks_expected": 1
+  },
+  "missing_runs": []
+}

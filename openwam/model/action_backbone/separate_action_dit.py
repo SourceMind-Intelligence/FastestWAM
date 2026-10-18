@@ -384,6 +384,7 @@ class ActionDiT(ActionDiTBackbone):
         max_action_len: int = 1024,
         eps: float = 1e-6,
         shift_action: Optional[float] = None,
+        action_position_scale: float = 0.0,
     ):
         super().__init__()
         if variant not in ("joint_cross_attn", *_MOT_VARIANTS):
@@ -404,6 +405,12 @@ class ActionDiT(ActionDiTBackbone):
             raise ValueError(f"attn_head_dim must be a positive even int, got {attn_head_dim}")
 
         self.action_dim = action_dim
+        # Opt-in absolute positions break the constant-token invariant of
+        # zero-input MIP + position-free bridge attention. Default preserves
+        # existing checkpoints; this adds no learned parameters/state keys.
+        self.action_position_scale = float(action_position_scale)
+        if not 0.0 <= self.action_position_scale < float("inf"):
+            raise ValueError("action_position_scale must be finite and non-negative")
         self.dim = dim
         self._head_dim = attn_head_dim
         self._num_heads = num_heads
@@ -635,6 +642,15 @@ class ActionDiT(ActionDiTBackbone):
         """Tuple-based cross-attn forward used by eager and compile paths."""
 
         x = self._embed_actions(action_tokens)
+        if self.action_position_scale:
+            positions = torch.arange(x.shape[1], device=x.device, dtype=torch.float32)
+            frequencies = torch.exp(
+                -torch.arange(0, self.dim, 2, device=x.device, dtype=torch.float32)
+                * (9.210340371976184 / self.dim)
+            )
+            phases = positions[:, None] * frequencies[None, :]
+            pe = torch.stack((phases.sin(), phases.cos()), dim=-1).flatten(1)[:, :self.dim]
+            x = x + self.action_position_scale * pe.to(dtype=x.dtype).unsqueeze(0)
         self._validate_bridge_tuple(x, bridge_tuple)
         timestep = self._prepare_timestep(timestep, action_tokens.shape[0])
         t = self.time_embedding(timestep)

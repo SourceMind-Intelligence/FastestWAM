@@ -161,3 +161,33 @@ def test_wait_for_dynamic_queue_fails_if_all_workers_retire_with_pending_work():
     # The failure path drains abandoned queue entries and leaves Queue.join()
     # usable, rather than leaking an unfinished-task count.
     work_queue.join()
+
+
+def test_diagnostic_protocol_is_explicit_and_preserves_physics(tmp_path):
+    import yaml
+    from pathlib import Path
+    cfg = yaml.safe_load(Path('benchmarks/libero/policy_config.yml').read_text())
+    path = tmp_path / 'policy.yml'
+    path.write_text(yaml.safe_dump(cfg))
+    args = SimpleNamespace(policy_config=path, seed=43, smoke=False,
+                           num_trials=10, trial_start=0)
+    with pytest.raises(ValueError, match='pinned protocol violation'):
+        scheduler._validate_protocol(args)
+    args.diagnostic_protocol = True
+    scheduler._validate_protocol(args)
+    cfg['settle_steps'] = 0
+    path.write_text(yaml.safe_dump(cfg))
+    with pytest.raises(ValueError, match='settling'):
+        scheduler._validate_protocol(args)
+
+
+def test_diagnostic_results_cannot_resume_as_canonical(tmp_path):
+    args = scheduler._build_parser().parse_args([])
+    args.policy_config = __import__('pathlib').Path('benchmarks/libero/policy_config.yml')
+    kwargs = dict(jobs=[TaskJob('libero_goal', 0)],
+                  trial_run=TrialRun(0, 50), mujoco_version='3.3.2')
+    canonical = scheduler._resume_signature(args, **kwargs)
+    args.diagnostic_protocol = True
+    diagnostic = scheduler._resume_signature(args, **kwargs)
+    assert diagnostic['protocol_version'] == canonical['protocol_version'] + '-diagnostic'
+    assert diagnostic != canonical

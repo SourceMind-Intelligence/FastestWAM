@@ -1,0 +1,22 @@
+{
+  "summary_sha256": "a7ba31dbf6628d5bf5f6ceb0508b88245226346c11f51c5797987f2f234f473d",
+  "manifest_sha256": "7f53079a50c3e1a8ce777c10a2337f2e0a65778719bc1b5cc73dc982291a34c9",
+  "errors": [],
+  "ci_note": "Wilson interval treats episodes as independent; not training-seed or task-cluster uncertainty.",
+  "run": "openwam_alpha_sim_libero_10690_2step",
+  "tasks": 40,
+  "successes": 1991,
+  "trials": 2000,
+  "success_pct": 99.55,
+  "wilson_low_pct": 99.14694867812402,
+  "wilson_high_pct": 99.76307193630382,
+  "full_40x50": true,
+  "raw_counts_verified": true,
+  "denoise_steps": 2,
+  "seed": 42,
+  "checkpoint": "assets/openwam_ckpt/openwam_alpha/OpenWAM-Alpha-Sim-LIBERO/checkpoint_step_10690.safetensors",
+  "libero_spatial": 99.4,
+  "libero_object": 99.8,
+  "libero_goal": 99.6,
+  "libero_10": 99.4
+}

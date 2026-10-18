@@ -1,3 +1,8 @@
+> **FastestWAM research fork.** This repository extends OpenWAM with action-objective
+> and shallow cross-attention experiments. See the [research audit](docs/arxiv_readiness_20261018.md),
+> [verified results](results/research_audit_20261018/runs.csv), and
+> [experiment scripts](scripts/experiments). The original OpenWAM documentation and attribution follow.
+
 <p align="center">
   <img src="assets/repo_images/openwam_title.png" alt="OpenWAM" width="60%">
 </p>

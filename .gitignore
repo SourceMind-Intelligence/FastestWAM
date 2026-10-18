@@ -44,7 +44,7 @@ var/
 wheels/
 share/python-wheels/
 references/
-# third_party/ holds submodules (currently cosmos-predict2.5). Build outputs
+# third_party/ holds submodules (cosmos-predict2.5, RoboTwin). Build outputs
 # and bytecode that the submodule produces locally should not contaminate it.
 third_party/**/*.pyc
 third_party/**/__pycache__/
@@ -216,3 +216,5 @@ assets/*
 # Versioned RoboDojo score verification (see issue #23).
 !assets/robodojo_verification/
 !assets/robodojo_verification/**
+
+task_descriptions/

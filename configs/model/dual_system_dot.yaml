@@ -39,6 +39,9 @@ architecture:
   bridge_layers: null
   bridge_interval: 1
   dot_num_layers: 4
+  # Keep 0 for historical checkpoints; positive enables absolute sinusoidal
+  # action positions to break zero-input MIP temporal symmetry. Requires FT.
+  action_position_scale: 0.0
 
   mot_checkpoint_mixed_attn: true
   detach_bridge: false

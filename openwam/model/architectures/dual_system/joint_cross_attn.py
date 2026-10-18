@@ -105,6 +105,7 @@ class DualSystemCrossAttnArchitecture(BaseWAMArchitecture):
             attn_head_dim=attn_head_dim,
             text_dim=text_dim,
             shift_action=cfg.get("shift_action"),
+            action_position_scale=float(cfg.get("action_position_scale", 0.0)),
         )
 
     @property

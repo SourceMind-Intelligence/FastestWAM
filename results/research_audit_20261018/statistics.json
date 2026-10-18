@@ -1,0 +1,96 @@
+{
+  "comparisons": [
+    {
+      "baseline": "sf_decision_A_fm_2step_all_suites_step42730_20260927",
+      "candidate": "sf_decision_C_mip_mixed_long_suite_step42730_20260927",
+      "delta_pp": 0.9499999999999996,
+      "task_bootstrap_95ci_pp": [
+        -0.5000000000000007,
+        2.55
+      ],
+      "bootstrap_seed": 42,
+      "resamples": 20000,
+      "caveat": "Tasks resampled jointly across arms. Does not measure training-seed uncertainty."
+    },
+    {
+      "baseline": "dot_FM_flow_final_2step",
+      "candidate": "dot8_FM_flow_2step",
+      "delta_pp": -0.2499999999999992,
+      "task_bootstrap_95ci_pp": [
+        -1.6499999999999992,
+        1.050000000000002
+      ],
+      "bootstrap_seed": 42,
+      "resamples": 20000,
+      "caveat": "Tasks resampled jointly across arms. Does not measure training-seed uncertainty."
+    }
+  ],
+  "last100_training_loss": {
+    "dot4_MIP_gt_from_foundation_2step": {
+      "loss_action": 0.026874049138277768,
+      "pred0_gt_mse": 0.053025673143565655,
+      "pred1_gt_mse": 0.0007224249735008925
+    },
+    "dot8_FM_flow_2step": {
+      "loss_action": 0.012879403829574585
+    },
+    "dot_FM_continue_from_FM_2step": {
+      "loss_action": 0.01202366221230477
+    },
+    "dot_FM_flow_final_2step": {
+      "loss_action": 0.014195319944992662
+    },
+    "dot_MIP_gt_from_FM_2step": {
+      "loss_action": 0.027600019592791795,
+      "pred0_gt_mse": 0.05450199350714684,
+      "pred1_gt_mse": 0.000698045446188189
+    },
+    "dot_SF_from_FM_freeze_2step": {
+      "loss_action": 0.028066052496433257,
+      "pred0_gt_mse": 0.054921021945774556,
+      "pred1_gt_mse": 0.0012110830808524042
+    },
+    "dot_SF_mip_mixed_final_2step": {
+      "loss_action": 0.027809125185012818,
+      "pred0_gt_mse": 0.05451776001602411,
+      "pred1_gt_mse": 0.0011004902963759377
+    },
+    "sf_A_fm_final_gpu6_task06": {
+      "loss_action": 0.008824522020295262
+    },
+    "sf_C_mixed_final_gpu6_smoke": {
+      "loss_action": 0.0011197257362073288,
+      "pred0_gt_mse": 0.0016860114899463952,
+      "pred1_gt_mse": 0.0005534399970201775
+    },
+    "sf_C_mixed_final_gpu6_task06": {
+      "loss_action": 0.0011197257362073288,
+      "pred0_gt_mse": 0.0016860114899463952,
+      "pred1_gt_mse": 0.0005534399970201775
+    },
+    "sf_decision_A_fm_10step_long06_step42730_20260926": {
+      "loss_action": 0.008824522020295262
+    },
+    "sf_decision_A_fm_2step_all_suites_step42730_20260927": {
+      "loss_action": 0.008824522020295262
+    },
+    "sf_decision_A_fm_2step_long06_step42730_20260926": {
+      "loss_action": 0.008824522020295262
+    },
+    "sf_decision_C_mip_mixed_long04_step42730_20260927": {
+      "loss_action": 0.0011197257362073288,
+      "pred0_gt_mse": 0.0016860114899463952,
+      "pred1_gt_mse": 0.0005534399970201775
+    },
+    "sf_decision_C_mip_mixed_long06_step42730_20260926": {
+      "loss_action": 0.0011197257362073288,
+      "pred0_gt_mse": 0.0016860114899463952,
+      "pred1_gt_mse": 0.0005534399970201775
+    },
+    "sf_decision_C_mip_mixed_long_suite_step42730_20260927": {
+      "loss_action": 0.0011197257362073288,
+      "pred0_gt_mse": 0.0016860114899463952,
+      "pred1_gt_mse": 0.0005534399970201775
+    }
+  }
+}

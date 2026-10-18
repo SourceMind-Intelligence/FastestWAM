@@ -1,0 +1,152 @@
+model:
+  video_backbone:
+    encoder:
+      name: wan22_vae
+      model_path: /path/to/Wan2.2-TI2V-5B
+    name: wan22_ti2v_5b
+    model_path: /path/to/Wan2.2-TI2V-5B
+    from_scratch: false
+    shift_video: 5.0
+    components:
+    - attr: dit
+      model_class: openwam.model.video_backbone.wan.models.dit.WanModel
+      extra_kwargs:
+        has_image_input: false
+        patch_size:
+        - 1
+        - 2
+        - 2
+        in_dim: 48
+        dim: 3072
+        ffn_dim: 14336
+        freq_dim: 256
+        text_dim: 4096
+        out_dim: 48
+        num_heads: 24
+        num_layers: 30
+        eps: 1.0e-06
+        seperated_timestep: true
+        require_clip_embedding: false
+        require_vae_embedding: false
+        fuse_vae_embedding_in_latents: true
+    - attr: vae
+      model_class: openwam.model.video_backbone.wan.models.vae.WanVideoVAE38
+      extra_kwargs: {}
+    - attr: text_encoder
+      model_class: openwam.model.video_backbone.wan.models.text_encoder.WanTextEncoder
+      extra_kwargs: {}
+    tokenizer:
+      class: openwam.model.video_backbone.wan.models.text_encoder.HuggingfaceTokenizer
+      attr: tokenizer
+      subdir: tokenizer/google/umt5-xxl
+      path_kwarg: name
+      kwargs:
+        seq_len: 512
+        clean: whitespace
+  action_backbone:
+    dim: 1024
+    ffn_dim: 4096
+    shift_action: 5.0
+  freeze:
+  - video_backbone.text_encoder
+  - video_backbone.reason1
+  - video_backbone.vae
+  - video_backbone.image_encoder
+  - video_backbone.video_encoder
+  architecture:
+    framework: dual_system
+    variant: joint_cross_attn
+    action_dim: 80
+    use_proprioception: true
+    state_dim: 80
+    bridge_layers: null
+    bridge_interval: 1
+    mot_checkpoint_mixed_attn: true
+    attention_mask_mode: mutual
+    video_attention_mask_mode: first_frame_causal
+    detach_bridge: false
+    idm_video_cond_noise_prob: 0.5
+    action_objective: mip
+    mip_t_star: 0.9
+    mip_num_steps: 2
+    mip_refine_mode: gt
+    dot_num_layers: 4
+dataloader:
+  type: libero
+  dataset_dir: assets/benchmark_data/libero
+  action_mode: eef
+  unify_action: true
+  unify_action_map:
+  - 0-9
+  unify_state_map: null
+  num_frames: 33
+  video_stride: 4
+  window_stride: 1
+  split: train
+  height: 384
+  width: 320
+  multiview: true
+  camera_layout:
+  - observation.images.image
+  - observation.images.image2
+  - null
+  target_camera: observation.images.image
+  normalize_mode: min-max
+  color_jitter:
+    enabled: false
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+    hue: 0.0
+  seed: 42
+training:
+  debug: false
+  learning_rate: 0.0001
+  adam_betas:
+  - 0.9
+  - 0.95
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  num_epochs: 2
+  max_steps: null
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  lr_scheduler: cosine
+  warmup_ratio: 0.05
+  lr_min_ratio: 0.01
+  action_lr: 5.0e-05
+  video_lr: 1.0e-05
+  mixed_precision: bf16
+  zero_stage: 2
+  use_gradient_checkpointing: true
+  use_gradient_checkpointing_offload: false
+  initialize_model_on_cpu: false
+  offload_optimizer_device: none
+  lambda_video: 1.0
+  lambda_action: 1.0
+  max_timestep_boundary: 1.0
+  min_timestep_boundary: 0.0
+  output_path: outputs/experiments/libero_dot_fm_to_mip_gt_2026-10-16_16-48-07/MIP_gt_from_FM
+  save_steps: 2000
+  save_full_states_for_resume: false
+  keep_last_k_ckpts: 1
+  milestone_save_steps:
+  - 2000
+  max_full_ckpts: 0
+  max_milestone_ckpts: 1
+  disk_guard_warn_gb: 600
+  disk_guard_critical_gb: 400
+  measure_flops: false
+  assumed_step_tflops: 0.0
+  finetune_ckpt_path: outputs/experiments/libero_dot_sf_2026-10-13_17-44-16/FM_flow/2026-10-14_14-39-10
+  resume_ckpt_path: null
+  finetune_strict_load: true
+  dataset_num_workers: 8
+project:
+  name: openwam
+  output_dir: outputs/${now:%Y-%m-%d_%H-%M-%S}
+  seed: 42
+  wandb:
+    project: null
+    run_name: null
+    entity: null

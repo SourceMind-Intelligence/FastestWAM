@@ -1,0 +1,77 @@
+{
+  "checkpoint": "outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+  "created_at": "2026-09-27T00:23:34.673278",
+  "server_mode": "managed",
+  "inference_mode": "sync",
+  "inference_horizon": 10,
+  "denoise_mode": "sync",
+  "denoise_steps": 10,
+  "replicas_per_gpu": 1,
+  "gpus": [
+    2
+  ],
+  "render_gpus": [
+    7
+  ],
+  "render_assignments": [
+    {
+      "policy_gpu": 2,
+      "replica": 0,
+      "render_gpu": 7
+    }
+  ],
+  "client_max_attempts": 3,
+  "client_retry_delay": 2.0,
+  "worker_max_consecutive_failures": 3,
+  "worker_recovery_delay": 30.0,
+  "client_start_stagger": 0.5,
+  "policy_config": "benchmarks/libero/policy_config.yml",
+  "seed_override": null,
+  "effective_seed": 42,
+  "task_sample_ratio": null,
+  "task_sample_seed": 42,
+  "libero_python": "/root/fasteval-libero/envs/libero/bin/python",
+  "libero_path": "/root/fasteval-libero/LIBERO",
+  "mujoco_version": "3.3.2",
+  "scheduler": "dynamic_shared_queue",
+  "resume_signature": {
+    "protocol_version": "openwam-libero-native-action-seed42-settle30-v1",
+    "checkpoint": "outputs/experiments/libero_sf_suite_2026-09-25_00-52-16/C_mip_mixed/2026-09-25_00-54-11/checkpoint_step_42730.safetensors",
+    "policy_config_sha256": "d4211e25b46ec5e164b3662f4ed06743bef2be9ca8243f7c41b14e631f1a89cf",
+    "seed_override": null,
+    "effective_seed": 42,
+    "mujoco_version": "3.3.2",
+    "inference_mode": "sync",
+    "inference_horizon": 10,
+    "denoise_mode": "sync",
+    "denoise_steps": 10,
+    "trial_start": 0,
+    "num_trials": 50,
+    "jobs_sha256": "f4c84af63282f511ffe2dd35a9e9c1b41053a6d36a536ba3e151650dec331e98",
+    "jobs_count": 1,
+    "render_gpus": [
+      7
+    ]
+  },
+  "trial_run": {
+    "trial_start": 0,
+    "num_trials": 50,
+    "trial_stop": 50
+  },
+  "initial_queue": [
+    {
+      "suite": "libero_10",
+      "task_id": 6
+    }
+  ],
+  "workers": [
+    {
+      "gpu": 2,
+      "gpu_slot": 0,
+      "replica": 0,
+      "port": 8940,
+      "active": true,
+      "jobs": []
+    }
+  ]
+}
