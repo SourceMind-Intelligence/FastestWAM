@@ -123,3 +123,10 @@ GPU0 评测结束后，`queue_last4h_latency.sh` 排队执行独占延迟测量�
 | MoT | 25.4773 | 42.1059 | 1.6527× |
 
 每 rank batch1、4 ranks、bf16、ZeRO2、gradient checkpointing；计数器包住 loss + backward，首步 warmup 后测 3 步。全 rank 总算子数为表值乘4。这是 PyTorch FlopCounterMode 覆盖算子的统计，未声称涵盖通信、所有未注册 kernel 或 optimizer 操作。共同的编码器开销也计入测量，因此 MIP/FM 比例不必等于2。原始6行 metrics 与配置存于 `results/last4h_20261018/flops/`。不能拿该 batch1 校准直接填充旧 batch8 训练日志的“实测累计 TFLOPs”。
+
+
+## 21:12 CST 更新：位置编码修复的阶段性闭环证据
+
+两个匹配的续训分支均完成 1,500 microsteps / 750 optimizer steps / 12,000 examples。最终单步 coarse MSE：无位置编码 0.07455，有位置编码 0.007214；单步值仅描述日志，不代表总体均值。
+
+截至本次归档，两个分支共同完成的 6 个任务、30 个相同 trial 中，无位置编码成功 0/30，sinusoidal scale=0.1 成功 30/30。修复分支更快完成任务，不能直接比较两个分支各自已完成子集的总体成功率。此结果支持时间对称性诊断，但仍是单训练种子、每任务 5 trials 的诊断；须等待全任务评测、扩大 trials、增加训练种子后才能写成稳健的论文结论。完整逐 episode 证据和覆盖率见 `results/last4h_20261018/`。

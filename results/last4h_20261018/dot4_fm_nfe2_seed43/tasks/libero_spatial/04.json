@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_spatial",
+  "task_id": 4,
+  "task": "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate",
+  "instruction": "pick up the black bowl in the top drawer of the wooden cabinet and place it on the plate",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 9,
+  "success_rate": 0.9,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 43,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 125,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 148,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 429,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 144,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 141,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 143,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 127,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 122,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 140,
+      "last_reward": 1.0
+    }
+  ]
+}

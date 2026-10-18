@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_object",
+  "task_id": 2,
+  "task": "pick_up_the_salad_dressing_and_place_it_in_the_basket",
+  "instruction": "pick up the salad dressing and place it in the basket",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 10,
+  "success_rate": 1.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 131,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 134,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 136,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 130,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 121,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 136,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 126,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 126,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 128,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 134,
+      "last_reward": 1.0
+    }
+  ]
+}

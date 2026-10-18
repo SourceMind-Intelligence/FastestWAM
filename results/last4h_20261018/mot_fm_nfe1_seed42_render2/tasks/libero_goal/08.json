@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_goal",
+  "task_id": 8,
+  "task": "put_the_bowl_on_the_plate",
+  "instruction": "put the bowl on the plate",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 10,
+  "success_rate": 1.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 73,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 79,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 72,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 75,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 75,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 78,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 75,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 78,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 74,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 75,
+      "last_reward": 1.0
+    }
+  ]
+}

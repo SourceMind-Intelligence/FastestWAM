@@ -1,0 +1,47 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_spatial",
+  "task_id": 3,
+  "task": "pick_up_the_black_bowl_on_the_cookie_box_and_place_it_on_the_plate",
+  "instruction": "pick up the black bowl on the cookie box and place it on the plate",
+  "trial_start": 0,
+  "trial_stop": 5,
+  "successes": 0,
+  "success_rate": 0.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 1,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 2,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 3,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 4,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    }
+  ]
+}

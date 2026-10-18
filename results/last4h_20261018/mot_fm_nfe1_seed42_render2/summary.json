@@ -1,0 +1,591 @@
+{
+  "task_results": [
+    {
+      "suite": "libero_spatial",
+      "task_id": 0,
+      "task_name": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_00/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 1,
+      "task_name": "pick_up_the_black_bowl_next_to_the_ramekin_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_01/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 2,
+      "task_name": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_02/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 3,
+      "task_name": "pick_up_the_black_bowl_on_the_cookie_box_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_03/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 4,
+      "task_name": "pick_up_the_black_bowl_in_the_top_drawer_of_the_wooden_cabinet_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_04/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 5,
+      "task_name": "pick_up_the_black_bowl_on_the_ramekin_and_place_it_on_the_plate",
+      "successes": 9,
+      "trials": 10,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_05/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 6,
+      "task_name": "pick_up_the_black_bowl_next_to_the_cookie_box_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_06/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 7,
+      "task_name": "pick_up_the_black_bowl_on_the_stove_and_place_it_on_the_plate",
+      "successes": 9,
+      "trials": 10,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_07/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 8,
+      "task_name": "pick_up_the_black_bowl_next_to_the_plate_and_place_it_on_the_plate",
+      "successes": 9,
+      "trials": 10,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_08/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_spatial",
+      "task_id": 9,
+      "task_name": "pick_up_the_black_bowl_on_the_wooden_cabinet_and_place_it_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_spatial/task_09/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 0,
+      "task_name": "open_the_middle_drawer_of_the_cabinet",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_00/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 1,
+      "task_name": "put_the_bowl_on_the_stove",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_01/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 2,
+      "task_name": "put_the_wine_bottle_on_top_of_the_cabinet",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_02/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 3,
+      "task_name": "open_the_top_drawer_and_put_the_bowl_inside",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_03/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 4,
+      "task_name": "put_the_bowl_on_top_of_the_cabinet",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_04/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 5,
+      "task_name": "push_the_plate_to_the_front_of_the_stove",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_05/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 6,
+      "task_name": "put_the_cream_cheese_in_the_bowl",
+      "successes": 9,
+      "trials": 10,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_06/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 7,
+      "task_name": "turn_on_the_stove",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_07/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 8,
+      "task_name": "put_the_bowl_on_the_plate",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_08/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_goal",
+      "task_id": 9,
+      "task_name": "put_the_wine_bottle_on_the_rack",
+      "successes": 9,
+      "trials": 10,
+      "success_rate": 0.9,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_goal/task_09/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 0,
+      "task_name": "pick_up_the_alphabet_soup_and_place_it_in_the_basket",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_object/task_00/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 1,
+      "task_name": "pick_up_the_cream_cheese_and_place_it_in_the_basket",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_object/task_01/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 2,
+      "task_name": "pick_up_the_salad_dressing_and_place_it_in_the_basket",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_object/task_02/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 3,
+      "task_name": "pick_up_the_bbq_sauce_and_place_it_in_the_basket",
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "complete": true,
+      "result_paths": [
+        "outputs/last4h_20261018_194856/mot_fm_nfe1_seed42_render2/videos/libero_object/task_03/trials_000_009/attempt_01/results.json"
+      ]
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 4,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 5,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 6,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 7,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 8,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 9,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 0,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 1,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 2,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 3,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 4,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 5,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 6,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 7,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 8,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 9,
+      "task_name": null,
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "complete": false,
+      "result_paths": []
+    }
+  ],
+  "suite_results": [
+    {
+      "suite": "libero_spatial",
+      "successes": 97,
+      "trials": 100,
+      "success_rate": 0.97,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_goal",
+      "successes": 98,
+      "trials": 100,
+      "success_rate": 0.98,
+      "tasks_complete": 10,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_object",
+      "successes": 40,
+      "trials": 40,
+      "success_rate": 1.0,
+      "tasks_complete": 4,
+      "tasks_expected": 10
+    },
+    {
+      "suite": "libero_10",
+      "successes": 0,
+      "trials": 0,
+      "success_rate": null,
+      "tasks_complete": 0,
+      "tasks_expected": 10
+    }
+  ],
+  "overall": {
+    "successes": 235,
+    "trials": 240,
+    "success_rate": 0.9791666666666666,
+    "tasks_complete": 24,
+    "tasks_expected": 40
+  },
+  "missing_runs": [
+    {
+      "suite": "libero_object",
+      "task_id": 4,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 5,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 6,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 7,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 8,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_object",
+      "task_id": 9,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 0,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 1,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 2,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 3,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 4,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 5,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 6,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 7,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 8,
+      "trial_start": 0,
+      "trial_stop": 10
+    },
+    {
+      "suite": "libero_10",
+      "task_id": 9,
+      "trial_start": 0,
+      "trial_stop": 10
+    }
+  ]
+}

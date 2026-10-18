@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_goal",
+  "task_id": 5,
+  "task": "push_the_plate_to_the_front_of_the_stove",
+  "instruction": "push the plate to the front of the stove",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 10,
+  "success_rate": 1.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 161,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 147,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 137,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 186,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 162,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 147,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 137,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 162,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 145,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 184,
+      "last_reward": 1.0
+    }
+  ]
+}

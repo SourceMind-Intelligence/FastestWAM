@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_goal",
+  "task_id": 6,
+  "task": "put_the_cream_cheese_in_the_bowl",
+  "instruction": "put the cream cheese in the bowl",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 9,
+  "success_rate": 0.9,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 43,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 99,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 96,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 87,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 88,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 100,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 86,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 96,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 97,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 96,
+      "last_reward": 1.0
+    }
+  ]
+}

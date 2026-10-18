@@ -1,0 +1,70 @@
+{
+  "updated_at": "2026-10-18T13:11:43.398450+00:00",
+  "runs": [
+    {
+      "run": "dot4_fm_nfe1_seed42",
+      "complete": false,
+      "successes": 259,
+      "trials": 270,
+      "success_rate": 0.9592592592592593,
+      "tasks_complete": 27,
+      "tasks_expected": 40
+    },
+    {
+      "run": "dot4_fm_nfe2_seed43",
+      "complete": false,
+      "successes": 238,
+      "trials": 250,
+      "success_rate": 0.952,
+      "tasks_complete": 25,
+      "tasks_expected": 40
+    },
+    {
+      "run": "dot8_fm_nfe1_seed42",
+      "complete": false,
+      "successes": 263,
+      "trials": 270,
+      "success_rate": 0.9740740740740741,
+      "tasks_complete": 27,
+      "tasks_expected": 40
+    },
+    {
+      "run": "mot_fm_nfe1_seed42",
+      "complete": false,
+      "successes": 10,
+      "trials": 10,
+      "success_rate": 1.0,
+      "tasks_complete": 1,
+      "tasks_expected": 40,
+      "excluded_reason": "Aborted after repeated EGL SIGABRT on GPU6; superseded by render2 run."
+    },
+    {
+      "run": "mot_fm_nfe1_seed42_render2",
+      "complete": false,
+      "successes": 235,
+      "trials": 240,
+      "success_rate": 0.9791666666666666,
+      "tasks_complete": 24,
+      "tasks_expected": 40
+    },
+    {
+      "run": "no_position_eval",
+      "complete": false,
+      "successes": 0,
+      "trials": 30,
+      "success_rate": 0.0,
+      "tasks_complete": 6,
+      "tasks_expected": 40
+    },
+    {
+      "run": "sinusoidal_position_eval",
+      "complete": false,
+      "successes": 133,
+      "trials": 135,
+      "success_rate": 0.9851851851851852,
+      "tasks_complete": 27,
+      "tasks_expected": 40
+    }
+  ],
+  "note": "All new evaluations are diagnostic. Rates cover completed tasks only. Incomplete and aborted runs must not be reported as full-benchmark scores."
+}

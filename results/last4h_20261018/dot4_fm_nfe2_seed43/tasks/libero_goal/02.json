@@ -1,0 +1,77 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_goal",
+  "task_id": 2,
+  "task": "put_the_wine_bottle_on_top_of_the_cabinet",
+  "instruction": "put the wine bottle on top of the cabinet",
+  "trial_start": 0,
+  "trial_stop": 10,
+  "successes": 10,
+  "success_rate": 1.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 43,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 89,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 115,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 114,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 120,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 107,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 5,
+      "success": true,
+      "policy_steps": 109,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 6,
+      "success": true,
+      "policy_steps": 97,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 7,
+      "success": true,
+      "policy_steps": 117,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 8,
+      "success": true,
+      "policy_steps": 104,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 9,
+      "success": true,
+      "policy_steps": 110,
+      "last_reward": 1.0
+    }
+  ]
+}

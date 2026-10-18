@@ -1,0 +1,47 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_goal",
+  "task_id": 3,
+  "task": "open_the_top_drawer_and_put_the_bowl_inside",
+  "instruction": "open the top drawer and put the bowl inside",
+  "trial_start": 0,
+  "trial_stop": 5,
+  "successes": 4,
+  "success_rate": 0.8,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 187,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": false,
+      "policy_steps": 600,
+      "last_reward": 0.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 182,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 191,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 186,
+      "last_reward": 1.0
+    }
+  ]
+}

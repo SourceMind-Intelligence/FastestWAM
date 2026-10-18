@@ -1,0 +1,47 @@
+{
+  "action_mode": "eef",
+  "suite": "libero_spatial",
+  "task_id": 1,
+  "task": "pick_up_the_black_bowl_next_to_the_ramekin_and_place_it_on_the_plate",
+  "instruction": "pick up the black bowl next to the ramekin and place it on the plate",
+  "trial_start": 0,
+  "trial_stop": 5,
+  "successes": 5,
+  "success_rate": 1.0,
+  "max_steps": 600,
+  "settle_steps": 30,
+  "seed": 42,
+  "save_videos": false,
+  "trials": [
+    {
+      "trial": 0,
+      "success": true,
+      "policy_steps": 109,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 1,
+      "success": true,
+      "policy_steps": 103,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 2,
+      "success": true,
+      "policy_steps": 115,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 3,
+      "success": true,
+      "policy_steps": 105,
+      "last_reward": 1.0
+    },
+    {
+      "trial": 4,
+      "success": true,
+      "policy_steps": 113,
+      "last_reward": 1.0
+    }
+  ]
+}
